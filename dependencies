@@ -1,0 +1,4 @@
+ftp://ftp.geneontology.org/pub/go//gene-associations/goa_human.gaf.gz
+
+dbsnp mutations:
+ftp://ftp.ncbi.nih.gov/snp//organisms/human_9606_b150_GRCh38p7/ASN1_flat/ds_flat_ch1.flat.gz

@@ -38,6 +38,7 @@ from id_mapping import (produce_uniqueGene_swissProtIDs,
                         produce_uniqueGene_sequences,
                         produce_proteinSeq_dict,
                         produce_uniprotID_dict,
+                        produce_rnaToProtein_refseqID_dict,
                         produce_geneName_dict,
                         produce_protein_interaction_dict,
                         produce_protein_chain_dict,
@@ -118,11 +119,13 @@ def main():
     # color specific to interactome
     interactome_color = interactome_colors[ interactome_choise ]
     
+    dataDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data')
+    
     # directory for data files from external sources
-    inDir = Path('../data/external')
+    inDir = dataDir / 'external'
     
     # directory to save processed data shared by all interactomes
-    outDir = Path('../data/processed')
+    outDir = dataDir / 'processed'
     
     # directory to save processed data specific to interactome
     interactomeOutDir = outDir / interactome_name
@@ -193,6 +196,13 @@ def main():
         produce_uniprotID_dict(inDir / 'HUMAN_9606_idmapping.dat',
                                UniqueGeneSwissProtIDFile,
                                UniprotIDmapFile)
+    
+    rnaToProteinRefseqIDMapFile = outDir / 'human_rnaToProtein_refseqID_map.pkl'
+    if not rnaToProteinRefseqIDMapFile.is_file():
+        print( 'Producing rna to protein RefSeq ID dictionary' )
+        produce_rnaToProtein_refseqID_dict (inDir / 'LRG_RefSeqGene',
+                                            rnaToProteinRefseqIDMapFile)
+    return
     
     InteractomeFile1 = interactomeOutDir / 'human_interactome_all.txt'
     if not InteractomeFile1.is_file():

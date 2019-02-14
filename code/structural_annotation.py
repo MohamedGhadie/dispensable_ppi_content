@@ -7,6 +7,8 @@ import numpy as np
 from pathlib import Path
 from random import sample
 from Bio.PDB import PDBParser
+from simple_tools import create_dir, isolate_pairs, merge_list_pairs
+from text_tools import read_list_table, write_hpc_job
 from interactome_tools import (write_chain_annotated_interactome,
                                read_chain_annotated_interactome,
                                write_unmerged_interface_annotated_interactome,
@@ -14,26 +16,27 @@ from interactome_tools import (write_chain_annotated_interactome,
                                write_single_interface_annotated_interactome,
                                read_interface_annotated_interactome,
                                write_interface_annotated_interactome)
-from simple_tools import (create_dir,
-                          isolate_pairs,
-                          merge_list_pairs)
-from text_tools import (read_list_table,
-                        write_hpc_job)
-from pdb_tools import (clear_structures,
+from pdb_tools import (allow_pdb_downloads,
+                       suppress_pdb_warnings,
+                       clear_structures,
+                       return_structure,
+                       load_pdbtools_chain_strucRes_labels,
+                       load_pdbtools_chain_sequences,
+                       return_chain_sequence,
+                       ordered_chain_residues,
+                       return_chain_res_posToID,
                        write_partial_structure,
                        load_chainResOrder,
                        get_interface_by_chainIDs)
 
 known_interfaces = {}
-knownCCIs = newCCIs = numPPIs = PPIcount = annotatedPPIs = 0
 
-def clear_globals ():
-    """Clear global variables
+def load_dictionaries (chainSequenceFile = None, chainStrucResLabelFile = None):
     
-    """
-    global knownCCIs, newCCIs, numPPIs, PPIcount, annotatedPPIs
-    print('\tclearing global variables used in structural annotation')
-    knownCCIs = newCCIs = numPPIs = PPIcount = annotatedPPIs = 0
+    if chainSequenceFile:
+        load_pdbtools_chain_sequences (chainSequenceFile)
+    if chainStrucResLabelFile:
+        load_pdbtools_chain_strucRes_labels (chainStrucResLabelFile)
 
 def clear_interfaces ():
     """Clear dict of known chain interfaces
@@ -43,41 +46,20 @@ def clear_interfaces ():
     print('\tclearing known interfaces dictionary')
     known_interfaces.clear()
 
-def produce_alignment_evalue_dict (inPath,
-#                                    proteinChainsFile,
-                                   outPath,
-                                   method = 'min'):
+def produce_alignment_evalue_dict (inPath, outPath, method = 'min'):
     
     chainMap = pd.read_table(inPath, sep='\t')
-    print(len(chainMap))
-    time.sleep(10)
-#     with open(proteinChainsFile, 'rb') as f:
-#         proteinChains = pickle.load(f)
     evalueDict = {}
-#     for i, p in enumerate(proteinChains.keys()):
-#         print(i)
-#         proteinRows = (chainMap['Query'] == p)
-#         for j, c in enumerate(proteinChains[p]):
-#             print('\t%d' % j)
-#             evalues = chainMap.loc[ proteinRows & (chainMap['Subject'] == c), "Expect"].values
-#             if len(evalues) == 1:
-#                 evalueDict [p + '-' + c] = evalues[0]
-#             elif method == 'min':
-#                 evalueDict [p + '-' + c] = min( evalues )
-#             elif method == 'mean':
-#                 evalueDict [p + '-' + c] = np.mean( evalues )
-    if method == 'min':
+    if method is 'min':
         for i, row in chainMap.iterrows():
-            print(i)
             k = row.Query + '-' + row.Subject
             if k in evalueDict:
                 if (row.Expect < evalueDict[k]):
                     evalueDict[k] = row.Expect
             else:
                 evalueDict[k] = row.Expect
-    elif method == 'mean':
+    elif method is 'mean':
         for i, row in chainMap.iterrows():
-            print(i)
             k = row.Query + '-' + row.Subject
             if k in evalueDict:
                 evalueDict[k].append( row.Expect )
@@ -151,9 +133,7 @@ def locate_alignment (Qseq,
         numGaps = [len([g for g in gapPos if g < pos]) for pos in matchPos]
         return [pos + Qstart - gaps for pos, gaps in zip(matchPos, numGaps)]
                                  
-def map_positions (refPos,
-                   alignPos,
-                   pos):
+def map_positions (refPos, alignPos, pos):
     """Map a list of reference positions to new positions given an allignment.
 
     Args:
@@ -184,10 +164,12 @@ def produce_chain_annotated_interactome (inPath,
     annotatedInteractome = pd.read_table(inPath, sep="\t")
     with open(proteinChainsFile, 'rb') as f:
         proteinChains = pickle.load(f)
-    alignmentEvalues = None
-    if alignmentEvalueFile is not None:
+    if alignmentEvalueFile:
         with open(alignmentEvalueFile, 'rb') as f:
             alignmentEvalues = pickle.load(f)
+    else:
+        alignmentEvalues = None
+    
     annotatedInteractome["Mapping_chains"] = annotatedInteractome.apply(lambda x:
                                                     sameStruct_mapping_chains(x["Protein_1"],
                                                                               x["Protein_2"],
@@ -228,7 +210,7 @@ def sameStruct_mapping_chains (protein1,
                 if (c1 != c2) and (pdbID1[i] == pdbID2[j]):
                     chainPairs.append( (c1, c2) )
         
-        if alignmentEvalues is not None:
+        if alignmentEvalues:
             avgEvalues = []
             for c1, c2 in chainPairs:
                 evalue1 = alignmentEvalues[protein1 + '-' + c1]
@@ -256,13 +238,15 @@ def produce_interface_annotated_interactome (inPath,
                                              pdbDir,
                                              chainMapFile,
                                              interfaceFile,
-                                             chainResOrderFile,
+                                             chainStrucResFile,
                                              maxInterfaces,
                                              maxAttempts,
                                              rnd,
                                              mapCutoff,
                                              bindingDist,
-                                             outPath):
+                                             outPath,
+                                             downloadPDB = True,
+                                             suppressWarnings = False):
     """Map interaction interfaces onto protein-protein interaction network.
 
     Args:
@@ -271,24 +255,25 @@ def produce_interface_annotated_interactome (inPath,
         chainMapFile (str): file directory containing table of chains mapping onto each protein.
         interfaceFile (str): file directory containing known interfaces of each chain with its
                                 binding chain. Newly calculated interfaces are added to this file.
-        chainResOrderFile (str): file directory containing dict of residue order in list
-                                    of residues with known coordinates.
+        chainStrucResFile (str): file directory containing dict of labels for structured 
+                                    residues that are part of SEQRES.
         numinf (int): number of chaninPairs to use for interface mapping.
         rnd (boolean): True to randomly select chain pairs from PPI annotation list 
                         for interface mapping.
         outPath (str): file directory to save interface-annotated interactome to.
 
     """
-    global known_interfaces, knownCCIs, newCCIs, numPPIs, PPIcount
-    clear_globals ()
+    global known_interfaces
     clear_structures()
     clear_interfaces()
-    load_chainResOrder(chainResOrderFile)
+    allow_pdb_downloads (downloadPDB)
+    suppress_pdb_warnings (suppressWarnings)
+    load_dictionaries (chainSequenceFile=chainSeqFile, chainStrucResLabelFile=chainStrucResFile)
     print('\treading chain-annotated interactome')
     interactome = read_chain_annotated_interactome(inPath)
     print('\treading protein-chain mapping table')
     chainMap = read_list_table(chainMapFile, ["Qpos", "Spos"], [int, int], '\t')
-    numPPIs = len(interactome)
+    annotatedPPIs, numPPIs = 0, len(interactome)
     
     if interfaceFile.is_file():
         print('\tloading known chain interfaces')
@@ -298,50 +283,51 @@ def produce_interface_annotated_interactome (inPath,
         filedir, _ = os.path.split(interfaceFile)
         create_dir(filedir)
     
-    print('\tloading chain residue order dictionary')
-    with open(chainResOrderFile, 'rb') as f:
-        resOrder = pickle.load(f)
     print('\tresolving interfaces for all %d PPIs' % numPPIs)
-    interactome["Interfaces"] = interactome.apply(lambda x:
-                                                  map_multi_interfaces(pdbDir,
-                                                                       x["Protein_1"],
-                                                                       x["Protein_2"],
-                                                                       x["Mapping_chains"],
-                                                                       chainMap,
-                                                                       resOrder,
-                                                                       maxInterfaces,
-                                                                       maxAttempts,
-                                                                       rnd,
-                                                                       mapCutoff,
-                                                                       bindingDist,
-                                                                       interfaceFile),
-                                                  axis=1)
-    
+    interfaces = []
+    for i, ppi in interactome.iterrows():
+        print('\t' + 'PPI: ' + protein1 + ' - ' + protein2)
+        sel_interfaces, sel_frac, sel_chainpairs = map_multi_interfaces (pdbDir,
+                                                                         ppi.Protein_1,
+                                                                         ppi.Protein_2,
+                                                                         ppi.Mapping_chains,
+                                                                         chainMap,
+                                                                         maxInterfaces,
+                                                                         maxAttempts,
+                                                                         rnd,
+                                                                         mapCutoff,
+                                                                         bindingDist,
+                                                                         interfaceFile,
+                                                                         PPIcount = i + 1,
+                                                                         numPPIs = numPPIs)
+        interface.append( (sel_interfaces, sel_frac, sel_chainpairs) )
+        if sel_chainpairs:
+            annotatedPPIs += 1
+        print('\t' + '%d PPIs resolved' % (i + 1))
+        print('\t' + '%d PPIs annotated' % annotatedPPIs)
+    interactome["Interfaces"] = interfaces
     
     print('\tfinalizing interface-annotated interactome')
-    interactome = interactome[interactome["Interfaces"].apply(lambda x:
-                                                              len(x[0]) > 0)
-                             ].reset_index(drop=True)
+    interactome = interactome[interactome["Interfaces"].apply(lambda x: len(x[0]) > 0)].reset_index(drop=True)
     interactome.drop("Mapping_chains", axis=1, inplace=True)
     interactome["Chain_pairs"] = interactome["Interfaces"].apply(lambda x: x[2])
     interactome["Mapping_frac"] = interactome["Interfaces"].apply(lambda x: x[1])
     interactome["Interfaces"] = interactome["Interfaces"].apply(lambda x: x[0])
     write_unmerged_interface_annotated_interactome (interactome, outPath)
-    print('\t%d known CCIs' % knownCCIs)
-    print('\t%d new CCIs' % newCCIs)
 
 def map_multi_interfaces (pdbDir,
                           protein1,
                           protein2,
                           chainPairs,
                           chainMap,
-                          resOrder,
                           maxInterfaces,
                           maxAttempts,
                           rnd,
                           mapCutoff,
                           bindingDist,
-                          interfaceFile):
+                          interfaceFile,
+                          PPIcount = None,
+                          numPPIs = None):
     """Map the first n interaction interfaces passing a mapping fraction cutoff for two 
         interacting proteins from mapping chain pairs from distinct PDB models.
 
@@ -351,7 +337,6 @@ def map_multi_interfaces (pdbDir,
         protein2 (str): ID of second interacting protein.
         chainPairs (list): list of chain pairs mapping onto the two interacting proteins.
         chainMap (dataframe): table of chains mapping onto each protein.
-        resOrder (dict): dict of residue order in list of residues with known coordinates.
         numinf (int): number of chaninPairs to use for interface mapping.
         rnd (boolean): True to randomly select pairs from chain pairs list for interface mapping.
         mapCutoff (float): minimum mapping fraction needed for interface from a chain pair
@@ -364,12 +349,7 @@ def map_multi_interfaces (pdbDir,
         list: mapping fraction for each two interfaces in tuples.
 
     """
-    global numPPIs, PPIcount, annotatedPPIs
-    PPIcount += 1
-    print('\t' + 'PPI: ' + protein1 + ' - ' + protein2)
-    
-    numAttempts = interfacesFound = 0
-    numChainPairs = len(chainPairs)
+    numAttempts, interfacesFound, numChainPairs = 0, 0, len(chainPairs)
     sel_interfaces, sel_frac, sel_chainpairs, sel_pdbs = [], [], [], []
     if rnd:
         chPairs = sample(chainPairs, numChainPairs)
@@ -380,47 +360,37 @@ def map_multi_interfaces (pdbDir,
             break
         chainID1, chainID2 = chainPair
         pdbID, _ = chainID1.split('_')
-        print('\t\t' + 'PPI: ' + protein1 + ' - ' + protein2 + ' (# %d out of %d) (%.1f %%)' 
-                % (PPIcount, numPPIs, 100 * PPIcount / numPPIs))
+        if ppiCount and numPPIs:
+            print('\t\t' + 'PPI: %s - %s (# %d out of %d) (%.1f %%)' 
+                    % (protein1, protein2, PPIcount, numPPIs, 100 * PPIcount / numPPIs))
+        else:
+            print('\t\t' + 'PPI: %s - %s' % (protein1, protein2))
         print('\t\t' + '%d attempts (max %d)' % (numAttempts, maxAttempts))
         print('\t\t' + '%d interfaces mapped (seeking %d)' % (interfacesFound, maxInterfaces))
-        print('\t\t' + 'Chain pair: ' + chainID1 + ' - ' + chainID2 + ' (# %d out of %d)' % (i + 1, numChainPairs))
+        print('\t\t' + 'Chain pair: %s - %s (# %d out of %d)' % (chainID1, chainID2, i + 1, numChainPairs))
         if pdbID not in sel_pdbs:
-            if (chainID1 in resOrder) and (chainID2 in resOrder):
-                interfaces1, interfaces2 = map_twoside_interfaces (pdbDir,
-                                                                   protein1,
-                                                                   protein2,
-                                                                   chainPair,
-                                                                   bindingDist,
-                                                                   chainMap,
-                                                                   interfaceFile)
-#                 if (len(interfaces1) > 0):
-#                     ch1interfaces, ch2interfaces, ch1frac, ch2frac = interfaces
-#                     passes1 = [(i, f) for i, f in zip(ch1interfaces, ch1frac) if f >= mapCutoff]
-#                     passes2 = [(i, f) for i, f in zip(ch2interfaces, ch2frac) if f >= mapCutoff]
-                passFrac1 = [f for _, f in interfaces1 if f >= mapCutoff]
-                passFrac2 = [f for _, f in interfaces2 if f >= mapCutoff]
-                if (len(passFrac1) > 0) and (len(passFrac2) > 0):
-                    inf1 = [i for i, f in interfaces1 if f >= mapCutoff]
-                    inf2 = [i for i, f in interfaces2 if f >= mapCutoff]
-#                         passInf1, passFrac1 = zip(*passes1)
-#                         passInf2, passFrac2 = zip(*passes2)
-                    sel_interfaces.append((inf1, inf2))
-                    sel_frac.append((passFrac1, passFrac2))
-                    sel_chainpairs.append(([chainID1]*len(inf1), [chainID2]*len(inf2)))
-                    sel_pdbs.append(pdbID)
-                    interfacesFound += 1
-                    print('\t\t\t' + 'interface %d found' % interfacesFound)
-                numAttempts += 1
-            else:
-                print('\t\t\t' + 'chain residue order not known')
+            interfaces1, interfaces2 = map_twoside_interfaces (pdbDir,
+                                                               protein1,
+                                                               protein2,
+                                                               chainPair,
+                                                               bindingDist,
+                                                               chainMap,
+                                                               interfaceFile)
+            passFrac1 = [f for _, f in interfaces1 if f >= mapCutoff]
+            passFrac2 = [f for _, f in interfaces2 if f >= mapCutoff]
+            if (len(passFrac1) > 0) and (len(passFrac2) > 0):
+                inf1 = [i for i, f in interfaces1 if f >= mapCutoff]
+                inf2 = [i for i, f in interfaces2 if f >= mapCutoff]
+                sel_interfaces.append((inf1, inf2))
+                sel_frac.append((passFrac1, passFrac2))
+                sel_chainpairs.append(([chainID1]*len(inf1), [chainID2]*len(inf2)))
+                sel_pdbs.append(pdbID)
+                interfacesFound += 1
+                print('\t\t\t' + 'interface %d found' % interfacesFound)
+            numAttempts += 1
         else:
             print('\t\t\t' + 'interface already mapped from PDB structure')
-    
-    annotatedPPIs += (len(sel_chainpairs) > 0)
-    print('\t' + '%d PPIs resolved' % PPIcount)
-    print('\t' + '%d PPIs annotated' % annotatedPPIs)
-    return (sel_interfaces, sel_frac, sel_chainpairs)
+    return sel_interfaces, sel_frac, sel_chainpairs
 
 def map_twoside_interfaces (pdbDir,
                             protein1,
@@ -429,13 +399,12 @@ def map_twoside_interfaces (pdbDir,
                             bindingDist,
                             chainMap,
                             interfaceFile):
-    global known_interfaces, knownCCIs, newCCIs
     
+    global known_interfaces
     chain1, chain2 = chainPair
     chainKey1 = chain1 + '-' + chain2
     chainKey2 = chain2 + '-' + chain1
     if (chainKey1 not in known_interfaces) or (chainKey2 not in known_interfaces):
-        newCCIs += 1
         print('\t\t\tcomputing interface for chain pair ' + chainKey1)
         known_interfaces[chainKey1], known_interfaces[chainKey2] = get_interface_by_chainIDs (pdbDir,
                                                                                               chain1,
@@ -446,7 +415,6 @@ def map_twoside_interfaces (pdbDir,
         write_chain_interfaces(interfaceFile)
     else:
         print('\t\t\tinterface known for chain pair ' + chainKey1)
-        knownCCIs += 1
     if (len(known_interfaces[chainKey1]) > 0) and (len(known_interfaces[chainKey2]) > 0):
         alignment1 = chainMap[(chainMap["Query"]==protein1) &
                               (chainMap["Subject"]==chain1)]
@@ -462,20 +430,11 @@ def map_twoside_interfaces (pdbDir,
                                                            x["Qpos"],
                                                            known_interfaces[chainKey2]),
                                               axis=1)
-#         interfaces1 = list( interfaces1[ interfaces1.apply(lambda x: x[1] > 0) ].values )
-#         interfaces2 = list( interfaces2[ interfaces2.apply(lambda x: x[1] > 0) ].values )
-#         interfaces1 = interfaces1.values
-#         interfaces2 = interfaces2.values 
-#         frac1 = [f for _, f in interfaces1 if f > 0]
-#         interfaces1 = [i for i, f in interfaces1 if f >0]
-#         frac2 = [f for _, f in interfaces2 if f > 0]
-#         interfaces2 = [i for i, f in interfaces2 if f > 0]
-#         return (interfaces1, interfaces2, frac1, frac2)
         interfaces1 = [(i, f) for i, f in interfaces1.values if f > 0]
         interfaces2 = [(i, f) for i, f in interfaces2.values if f > 0]
-        return (interfaces1, interfaces2)
+        return interfaces1, interfaces2
     else:
-        return ([],[])
+        return [], []
 
 def merge_interactome_interface_annotations (inPath, outPath):
     """Merge interface annotations for each PPI in an interactome into one tuple.
@@ -509,7 +468,6 @@ def remove_duplicate_interface_annotations (inPath, outPath):
                                                                      x["Mapping_frac"]),
                                            axis=1)
     interactome["Interfaces"] = uniqueInterfaces.apply(lambda x: x[0])
-    #interactome["Mapping_frac"] = uniqueInterfaces.apply(lambda x: x[1])
     interactome = interactome.drop("Mapping_frac", axis=1)
     write_interface_annotated_interactome( outPath )
 
@@ -577,7 +535,7 @@ def read_chain_interfaces (inPath):
             else:
                 known_interfaces[chainKey] = row.Chain1_interface
 
-def write_pdb_mapped_mutations (mutations,
+def write_pdb_mapped_mutations_old (mutations,
                                 interactomeFile,
                                 chainMapFile,
                                 chainSeqFile,
@@ -693,6 +651,141 @@ def write_pdb_mapped_mutations (mutations,
                     fout.write('\n')
             if not perturbing:
                 print('\t\t' + 'perturbed PPI not found for mutation')
+
+def write_pdb_mapped_mutations (mutations,
+                                interactomeFile,
+                                chainMapFile,
+                                chainSeqFile,
+                                proteinSeqFile,
+                                chainStrucResFile,
+                                pdbDir,
+                                outPath,
+                                downloadPDB = True,
+                                suppressWarnings = False):
+    """Map mutations onto PDB chains and write to file the mutation, host protein, partner
+    protein, position on host protein, position on chain, PDB ID, chain_mutation 
+    (WT res, chain ID, pos on chain, mut res), partner chain.
+
+    Args:
+        mutations (DataFrame): mutations to be mapped onto PDB chains and writen to file.
+        interactomeFile (str): file directory containing interactome network.
+        chainMapFile (str): file directory containing table of chains mapping onto each protein.
+        chainSeqFile (str): file directory containing dictionary of chain sequences.
+        proteinSeqFile (str): file directory containing dictionary of protein sequences.
+        pdbDir (str): file directory containing PDB structure files.
+        outPath (str): file directory to save mapped mutations to. 
+
+    """
+    clear_structures()
+    allow_pdb_downloads (downloadPDB)
+    suppress_pdb_warnings (suppressWarnings)
+    load_dictionaries (chainSequenceFile=chainSeqFile, chainStrucResLabelFile=chainStrucResFile)
+    interactome = read_interface_annotated_interactome(interactomeFile)
+    chainMap = read_list_table(chainMapFile, ['Qpos', 'Spos'], [int, int], '\t')
+    
+    print('\t' + 'writing mutations')
+    with io.open(outPath, "a") as fout:
+        # write header line to file
+        fout.write('\t'.join(['protein', 'partner', 'protein_pos', 'chain_pos', 'pdb_id', 'Chain_mutation', 'Partner_chain']) + '\n')
+        
+        # go through each mutation
+        for i, mut in mutations.iterrows():
+            print('\t' + 'mutation index: %d' % i)
+            perturbing = False
+            pos = mut.Mutation_Position
+            perturbedPartners = [p for p, perturb in zip(mut.partners, mut.perturbations) if perturb > 0]
+            ppis = interactome[ (interactome[ ["Protein_1", "Protein_2"] ] == mut.Protein).any(1) ]
+            
+            # go through each interaction (PPI) perturbed by the mutation
+            for j, ppi in ppis.iterrows():
+                if (ppi.Protein_1 in perturbedPartners) or (ppi.Protein_2 in perturbedPartners):
+                    perturbing, mapped = True, False
+                    print('\t\t' + 'PPI # %d' % j)
+                    
+                    # get chain pairs (models) used to map interface for this PPI
+                    if ppi.Protein_2 == mut.Protein:
+                        chainpairs = [tuple(reversed(x)) for x in ppi.chainpairs]
+                        partner = ppi.Protein_1
+                    else:
+                        chainpairs = ppi.Chain_pairs
+                        partner = ppi.Protein_2
+                    
+                    # go through each pair of chains (model)
+                    for ch1, ch2 in chainpairs:
+                        print('\t\t\t' + 'chain pair: %s-%s ' % (ch1, ch2))
+                        pdbid, ch1_id, _, ch2_id = ch1.split('_'), ch2.split('_')
+                        struc = return_structure (pdbid, pdbDir)
+                        if struc:
+                            model = struc[0]
+                            # get structured residues that are part of the chain SEQRES
+                            residues = ordered_chain_residues (pdbid, model, ch1_id)
+                            if residues:
+                                # map mutation position back onto chain pair (model) through sequence alignment
+                                mappings = mutation_structure_map (chainMap, mut.Protein, ch1, pos)
+                                # if mutation position maps through any protein-chain alignment 
+                                if mappings is not None:
+                                    # make sure chain wildtype residue is different than mutation residue
+                                    mappings["chainRes"] = mappings["posMaps"].apply(lambda x: return_chain_sequence(ch1)[x-1])
+                                    mappings = mappings[mappings["chainRes"] != mut.Mut_res]
+                                    if not mappings.empty:
+                                        # select the first position map from alignment table
+                                        chainRes, mapPos = mappings[["chainRes","posMaps"]].iloc[0]
+                                        # map chain residue position to residue ID
+                                        resID = return_chain_res_posToID (pdbid, ch1_id, mapPos, pdbDir)
+                                        if resID:
+                                            # write mutation structure mapping to file
+                                            _, resNum, _ = resID
+                                            fout.write('\t'.join([mut.Protein,
+                                                                  partner,
+                                                                  str(pos),
+                                                                  str(mapPos),
+                                                                  pdbid,
+                                                                  chainRes + ch1_id
+                                                                           + str(resNum)
+                                                                           + mut.Mut_res,
+                                                                  ch2_id]) +  '\n')
+                                            print('\t\t\t' + 'mutation mapping writen to file')
+                                            mapped = True
+                                        else:
+                                            print('\t\t\t' + 'chain residue coordinates not known')
+                                    else:
+                                        print('\t\t\t' + 'chain residue same as mutation residue')
+                                else:
+                                    print('\t\t\t' + 'mutation position not part of protein-chain alignment')
+                            else:
+                                print('\t\t\t' + 'chain residues not found')
+                        else:
+                            print('\t\t\t' + 'no structure found for chain ' + ch1)
+                    if not mapped:
+                        print('\t\t\t' + 'mutation mapping not successfull')
+                    fout.write('\n')
+            if not perturbing:
+                print('\t\t' + 'perturbed PPI not found for mutation')
+
+def mutation_structure_map (strucMap,
+                            protein,
+                            chainID,
+                            pos,
+                            firstMap = False):
+    
+    mappings = strucMap [(strucMap["Query"] == protein) & 
+                         (strucMap["Subject"] == chainID)].reset_index(drop=True)
+    mappings["posMaps"] = position_map (pos, mappings)
+    mappings = mappings [np.isnan(mappings["posMaps"]) == False]
+    if firstMap and not mappings.empty:
+        return mappings.iloc[0]
+    else:
+        return mappings if not mappings.empty else None
+
+def position_map (resPos, strucMap):
+    
+    posMap = []
+    for Qpos, Spos in strucMap[["Qpos", "Spos"]].values:
+        if resPos in Qpos:
+            posMap.append( Spos[Qpos.index(resPos)] )
+        else:
+            posMap.append(np.nan)
+    return np.array(posMap)
 
 def read_mutation_ddg (inPath):
     

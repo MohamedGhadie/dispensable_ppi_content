@@ -123,14 +123,21 @@ def sderror_on_fraction (k, n):
     p = k / n
     return np.sqrt(p * (1 - p) / n)
 
-def proportion_ratio_CI (k1, n1, k2, n2):
+def proportion_ratio_CI (k1, n1, k2, n2, a=1, b=0, c=1, d=0, conf = 95.0):
     
-    if ( k1 > 0 ) and ( n1 > 0 ) and ( k2 > 0 ) and ( n2 > 0 ):
-        r = (k1 / n1) / (k2 / n2)
-        SElogR = np.sqrt( (1 / k1) - (1 / n1) + (1 / k2) - (1 / n2) )
-        lowerlog = np.log( r ) - ( 1.96 * SElogR )
-        upperlog = np.log( r ) + ( 1.96 * SElogR )
-        return np.exp( lowerlog ), np.exp( upperlog )
+    mult = { 90.0 : 1.645,
+             95.0 : 1.960,
+             97.5 : 2.240,
+             99.0 : 2.576,
+             99.9 : 3.291 }
+    if k1 > 0 and n1 > 0 and k2 > 0 and n2 > 0 and conf in mult:
+        r = (a * k1/n1 + b) / (c * k2/n2 + d)
+        var1 = (1/k1 - 1/n1) /  (1 + (b * n1) / (a * k1))
+        var2 = (1/k2 - 1/n2) / (1 + (d * n2) / (c * k2))
+        SElogR = np.sqrt(var1 + var2)
+        lowerlog = np.log(r) - mult[conf] * SElogR
+        upperlog = np.log(r) + mult[conf] * SElogR
+        return np.exp(lowerlog), np.exp(upperlog)
     else:
         return np.nan, np.nan
 

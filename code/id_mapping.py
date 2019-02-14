@@ -312,3 +312,21 @@ def produce_substitution_matrix (name, outPath):
         scores[tuple(reversed(k))] = matrix[k]
     with open(outPath, 'wb') as fOut:
         pickle.dump(scores, fOut)
+
+def produce_rnaToProtein_refseqID_dict (inPath, outPath):
+    """Make a map of RNA RefSeq IDs to protein RefSeq IDs.
+
+    Args:
+        inPath (str): RefSeq ID mapping file.
+        outPath (str): path to save output pickle file to.
+
+    """
+    idMap = {}
+    with open(inPath, 'r') as f:
+        next(f)
+        for line in f:
+            tax_id, gene_id, symbol, rsg, lrg, rna, t, protein, p, category = line.strip().split('\t')
+            if (len(rna) > 0) and (len(protein) > 0):
+                idMap[rna] = protein
+    with open(outPath, 'wb') as fOut:
+        pickle.dump(idMap, fOut)

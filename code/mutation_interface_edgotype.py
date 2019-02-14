@@ -1,31 +1,33 @@
-import pandas as pd
 import numpy as np
 from random import seed, random
 from simple_tools import reverseTuples
-
-def single_mutation_PPI_perturb (protein, interfaces, pos, dist):
-    """Calculate the fraction of a protein's interaction interfaces in whose neighborhood 
-        a mutation occurs. Neighborhood is defined within a specified number of residues. 
+    
+def mutation_PPI_interface_perturbations (mutations, interactome, maxInterfaces, dist):
+    """Calculate the fraction of protein interaction interfaces in whose neighborhood 
+        specified mutations occur. Neighborhood is defined within a specified number of 
+        residues.
 
     Args:
-        protein (str): protein ID.
-        interfaces (list): protein interfaces in tuple form, with second tuple element
-                            being the partner's interface.
-        pos (int): mutation position on protein sequence.
+        mutations (dataframe): table of mutations with their associated protein IDs.
+        interactome (dataframe): protein interactions annotated with interaction interfaces.
+        maxInterfaces (int): select only interaction partners with which the protein has 
+                                this number of interfaces or less.
         dist (int): max distance measured by residue number for a mutation to be considered
                     in the neighborhood of an interface.
     
     Returns:
-        float: fraction of interfaces perturbed by mutation.
+        Series: list of fraction of interfaces perturbed per interaction partner for each
+                mutation.
     
     """
-    leftside = [i for i, j in interfaces]
-    mutationNeighbor = range(pos - dist, pos + dist + 1)
-    onInterface = []
-    for interface in leftside:
-        onInterface.append(any([i in mutationNeighbor for i in interface]))
-    return sum(onInterface) / len(onInterface)
-    
+    return mutations.apply(lambda x:
+                           single_mutation_PPI_perturbs(x["Protein"],
+                                                        interactome,
+                                                        maxInterfaces,
+                                                        x["Mutation_Position"],
+                                                        dist),
+                           axis=1)
+
 def single_mutation_PPI_perturbs (protein, interactome, maxInterfaces, pos, dist):
     """Calculate the fraction of a protein's interaction interfaces with multiple partners 
         in whose neighborhood a mutation occurs. Neighborhood is defined within a specified  
@@ -64,79 +66,55 @@ def single_mutation_PPI_perturbs (protein, interactome, maxInterfaces, pos, dist
         return (list(PPIs["Protein_2"]), PPIs_Perturbed.values)
     else:
         return ([], np.array([]))
-    
-def mutation_PPI_interface_perturbations (mutations, interactome, maxInterfaces, dist):
-    """Calculate the fraction of protein interaction interfaces in whose neighborhood 
-        specified mutations occur. Neighborhood is defined within a specified number of 
-        residues.
+
+def single_mutation_PPI_perturb (protein, interfaces, pos, dist):
+    """Calculate the fraction of a protein's interaction interfaces in whose neighborhood 
+        a mutation occurs. Neighborhood is defined within a specified number of residues. 
 
     Args:
-        mutations (dataframe): table of mutations with their associated protein IDs.
-        interactome (dataframe): protein interactions annotated with interaction interfaces.
-        maxInterfaces (int): select only interaction partners with which the protein has 
-                                this number of interfaces or less.
+        protein (str): protein ID.
+        interfaces (list): protein interfaces in tuple form, with second tuple element
+                            being the partner's interface.
+        pos (int): mutation position on protein sequence.
         dist (int): max distance measured by residue number for a mutation to be considered
                     in the neighborhood of an interface.
     
     Returns:
-        Series: list of fraction of interfaces perturbed per interaction partner for each
-                mutation.
+        float: fraction of interfaces perturbed by mutation.
     
     """
-    return mutations.apply(lambda x:
-                           single_mutation_PPI_perturbs(x["Protein"],
-                                                        interactome,
-                                                        maxInterfaces,
-                                                        x["Mutation_Position"],
-                                                        dist),
-                           axis=1)
+    leftside = [i for i, j in interfaces]
+    mutationNeighbor = range(pos - dist, pos + dist + 1)
+    onInterface = []
+    for interface in leftside:
+        onInterface.append(any([i in mutationNeighbor for i in interface]))
+    return sum(onInterface) / len(onInterface)
 
-def energy_based_perturb_prediction ( perturbs, ddg, cutoff ):
+def energy_based_perturbation (perturbs, ddg, cutoff, probabilistic = False):
 
-    pertProb = sum( ddg["DDG"] > cutoff ) / len( ddg )
     knownDDG = unknownDDG = 0
-    allPred = []
+    pertProb = sum([d > cutoff for _, _, _, d in ddg.values()]) / len(ddg)
     seed()
-    for i, row in perturbs.iterrows():
+    allPred = []
+    for protein, pos, partners, perturbations in perturbs[["Protein",
+                                                           "Mutation_Position",
+                                                           "partners",
+                                                           "perturbations"]].values:
         pred = []
-        for p, pert in zip( row.partners, row.perturbations ):
+        for p, pert in zip(partners, perturbations):
             if pert == 0:
-                pred.append( 0 )
+                pred.append(0)
             else:
-                ddgVal = ddg.loc[ ( ddg["protein"] == row.Protein ) & 
-                                  ( ddg["partner"] == p ) &
-                                  ( ddg["protein_pos"] == row.Mutation_Position ),
-                                  "DDG" ]
-                if not ddgVal.empty:
+                k = protein, p, pos
+                if k in ddg:
                     knownDDG += 1
-                    pred.append( 1 if ddgVal.item() > cutoff else 0 )
+                    pdb_id, chain_mut, partner_chain, ddgVal = ddg[k]
+                    pred.append(1 if ddgVal > cutoff else 0)
                 else:
                     unknownDDG += 1
-                    if random() >= pertProb:
-                        pred.append( 0 )
+                    if probabilistic:
+                        pred.append(1 if random() < pertProb else 0)
                     else:
-                        pred.append( 1 )
-        allPred.append( np.array( pred ) )
-    return pd.Series( allPred ), knownDDG, unknownDDG
-
-def energy_based_perturb_prediction2 ( perturbs, ddg, cutoff ):
-
-    knownDDG = unknownDDG = 0
-    allPred = []
-    for i, row in perturbs.iterrows():
-        pred = []
-        for p, pert in zip( row.partners, row.perturbations ):
-            if pert == 0:
-                pred.append( 0 )
-            else:
-                ddgVal = ddg.loc[ ( ddg["protein"] == row.Protein ) & 
-                                  ( ddg["partner"] == p ) &
-                                  ( ddg["protein_pos"] == row.Mutation_Position ),
-                                  "DDG" ]
-                if not ddgVal.empty:
-                    knownDDG += 1
-                    pred.append( 1 if ddgVal.item() > cutoff else 0 )
-                else:
-                    pred.append( np.nan )
-        allPred.append( np.array( pred ) )
-    return pd.Series(allPred), knownDDG, unknownDDG
+                        pred.append(np.nan)
+        allPred.append(pred)
+    return allPred, knownDDG, unknownDDG

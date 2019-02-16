@@ -2,12 +2,12 @@ import os
 import re
 import time
 import pickle
-import numpy as np
 import warnings
 from Bio import Seq, SeqIO
 from Bio.PDB import *
 from Bio.SeqUtils import seq1
 from urllib import error
+from itertools import compress
 
 downloadStructures = True
 suppressWarnings = False
@@ -248,7 +248,7 @@ def ordered_residues_per_chain (pdbid, model, pdbDir):
     """
     resPerChain = {}
     for chain in model.get_chains():
-        residues = ordered_chain_residues (pdbid, model, chain.get_id(), pdbdir)
+        residues = ordered_chain_residues (pdbid, model, chain.get_id(), pdbDir)
         if residues:
             resPerChain[chain.get_id()] = residues
     return resPerChain

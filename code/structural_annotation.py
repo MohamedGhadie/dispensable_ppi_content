@@ -25,8 +25,6 @@ from pdb_tools import (allow_pdb_downloads,
                        return_chain_sequence,
                        ordered_chain_residues,
                        return_chain_res_posToID,
-                       write_partial_structure,
-                       load_chainResOrder,
                        get_interface_by_chainIDs)
 
 known_interfaces = {}
@@ -233,6 +231,22 @@ def filter_chain_annotations(inPath,
     chainMap = chainMap.drop_duplicates(subset=['Query','Subject'], keep='first')
     chainMap = chainMap.sort_values(['Query','Subject'], axis=0, ascending=True)
     chainMap.to_csv(outPath, index=False, sep='\t')
+
+def filter_chain_annotations_by_protein (inPath, proteins, outPath):
+    
+    with io.open(inPath, "r", errors='ignore') as f, io.open(outPath, "w") as fout:
+        headers = f.readline()
+        fout.write( headers )
+        headerSplit = headers.strip().split('\t')
+        numCol = len( headerSplit )
+        queryPos = headerSplit.index('Query')
+    with io.open(inPath, "r", errors='ignore') as f, io.open(outPath, "a") as fout:
+        next(f)
+        for line in f:
+            linesplit = line.strip().split('\t')
+            if len( linesplit ) == numCol:
+                if linesplit[ queryPos ] in proteins:
+                    fout.write( line )
 
 def produce_interface_annotated_interactome (inPath,
                                              pdbDir,
@@ -686,8 +700,14 @@ def write_pdb_mapped_mutations (mutations,
     print('\t' + 'writing mutations')
     with io.open(outPath, "a") as fout:
         # write header line to file
-        fout.write('\t'.join(['protein', 'partner', 'protein_pos', 'chain_pos', 'pdb_id', 'Chain_mutation', 'Partner_chain']) + '\n')
-        
+        fout.write('\t'.join(['protein',
+                              'partner',
+                              'protein_pos',
+                              'pdb_id',
+                              'chain_id',
+                              'chain_pos',
+                              'chain_mutation',
+                              'partner_chain']) + '\n')
         # go through each mutation
         for i, mut in mutations.iterrows():
             print('\t' + 'mutation index: %d' % i)
@@ -704,21 +724,21 @@ def write_pdb_mapped_mutations (mutations,
                     
                     # get chain pairs (models) used to map interface for this PPI
                     if ppi.Protein_2 == mut.Protein:
-                        chainpairs = [tuple(reversed(x)) for x in ppi.chainpairs]
+                        chainPairs = [tuple(reversed(x)) for x in ppi.Chain_pairs]
                         partner = ppi.Protein_1
                     else:
-                        chainpairs = ppi.Chain_pairs
+                        chainPairs = ppi.Chain_pairs
                         partner = ppi.Protein_2
                     
                     # go through each pair of chains (model)
-                    for ch1, ch2 in chainpairs:
+                    for ch1, ch2 in chainPairs:
                         print('\t\t\t' + 'chain pair: %s-%s ' % (ch1, ch2))
-                        pdbid, ch1_id, _, ch2_id = ch1.split('_'), ch2.split('_')
+                        (pdbid, ch1_id), (_, ch2_id) = ch1.split('_'), ch2.split('_')
                         struc = return_structure (pdbid, pdbDir)
                         if struc:
                             model = struc[0]
                             # get structured residues that are part of the chain SEQRES
-                            residues = ordered_chain_residues (pdbid, model, ch1_id)
+                            residues = ordered_chain_residues (pdbid, model, ch1_id, pdbDir)
                             if residues:
                                 # map mutation position back onto chain pair (model) through sequence alignment
                                 mappings = mutation_structure_map (chainMap, mut.Protein, ch1, pos)
@@ -738,11 +758,13 @@ def write_pdb_mapped_mutations (mutations,
                                             fout.write('\t'.join([mut.Protein,
                                                                   partner,
                                                                   str(pos),
-                                                                  str(mapPos),
                                                                   pdbid,
-                                                                  chainRes + ch1_id
-                                                                           + str(resNum)
-                                                                           + mut.Mut_res,
+                                                                  ch1_id,
+                                                                  str(mapPos),
+                                                                  ''.join([chainRes,
+                                                                           ch1_id,
+                                                                           str(resNum),
+                                                                           mut.Mut_res]),
                                                                   ch2_id]) +  '\n')
                                             print('\t\t\t' + 'mutation mapping writen to file')
                                             mapped = True
@@ -787,130 +809,35 @@ def position_map (resPos, strucMap):
             posMap.append(np.nan)
     return np.array(posMap)
 
-def read_mutation_ddg (inPath):
-    
-    """Read mutation change (loss) in binding free energy from file writen by 
-    function "write_pdb_mapped_mutations".
-
-    Args:
-        inPath (str): file directory containing change in binding free energy. 
-
-    """
-    ddg = pd.DataFrame(columns=["protein",
-                                "partner",
-                                "protein_pos",
-                                "chain_pos",
-                                "pdb_id",
-                                "chain_mutation",
-                                "partner_chain",
-                                "submitted",
-                                "DDG"])
-    c = -1
-    with io.open(inPath, "r", encoding="utf-8") as f:
-        next(f)
-        for line in f:
-            strsplit = list( map ( str.strip, line.split('\t') ) )
-            if len(strsplit) == 9:
-                c += 1
-                ddg.loc[c] = strsplit
-    ddg = ddg.drop_duplicates(subset = ["protein", "partner", "protein_pos"],
-                              keep = 'first').reset_index(drop=True)
-    ddg["protein_pos"] = ddg["protein_pos"].apply(int)
-    ddg["chain_pos"] = ddg["chain_pos"].apply(int)
-    ddg["DDG"] = ddg["DDG"].apply(float)
-    return ddg
-
-def copy_mutation_ddg (inPath1, inPath2, outPath):
-    
-    """Copy mutation change in binding free energy from one file to another.
-
-    Args:
-        inPath1 (str): file directory containing change in binding free energy.
-        inPath2 (str): file directory containing mutations with unknown change in binding free energy.
-        outPath (str): file directory to output mutations with change in binding free energy.
-
-    """
-    ddg = {}
-    with io.open(inPath1, "r", encoding="utf-8") as f:
-        next(f)
-        for line in f:
-            strsplit = list( map ( str.strip, line.split('\t') ) )
-            if len(strsplit) > 7:
-                pdbid, mut, partnerChain = strsplit[ 4 : 7 ]
-                k = (pdbid,) + tuple(sorted([mut[1], partnerChain])) + (mut,)
-                ddg[k] = strsplit[-1]
-    write_mutation_ddg_tofile (ddg, inPath2, outPath)
-
-def write_mutation_ddg_tofile (ddg, inPath, outPath):
-    
-    with io.open(inPath, "r", encoding="utf-8") as f, io.open(outPath, "w") as fout:
-        for line in f:
-            strsplit = list( map ( str.strip, line.split('\t') ) )
-            if len(strsplit) >= 7:
-                pdbid, mut, partnerChain = strsplit[ 4 : 7 ]
-                k = (pdbid,) + tuple(sorted([mut[1], partnerChain])) + (mut,)
-                if len(strsplit) == 7:
-                    if k in ddg:
-                        if ddg[k] in ['X', 'S']:
-                            strsplit.append( ddg[k] )
-                        else:
-                            strsplit.append('S')
-                            strsplit.append( ddg[k] )
-                elif strsplit[-1] == 'S':
-                    if k in ddg:
-                        if ddg[k] not in ['X', 'S']:
-                            strsplit.append( ddg[k] )
-            fout.write( '\t'.join(map(str, strsplit)) +  '\n' )
-
-def produce_bindprofx_jobs (mutations,
-                            pdbDir,
-                            outDir,
-                            write_hpc_jobfiles = True,
-                            nodes = 1,
-                            ppn = 1,
-                            pmem = 7700,
-                            walltime = '1:00:00:00',
-                            rapid = None,
-                            username = '',
-                            hpcCommands = None,
-                            serverDataDir = '../data'):
-    
-    clear_structures()
-    
-    dataDir = outDir / 'data'
-    jobDir = outDir / 'jobs'
-    if not dataDir.exists():
-        os.makedirs(dataDir)
-    if not jobDir.exists():
-        os.makedirs(jobDir)
-    
-    for struc, mutList in mutations.items():
-        strucid = '_'.join(struc)
-        strucDir = dataDir / strucid
-        if not strucDir.exists():
-            os.makedirs(strucDir)
-        mutListFile = strucDir / 'mutList.txt'
-        mutList = [ '%s;' % mutList.pop(0) ] + ['\n%s;' % mut for mut in mutList]
-        with io.open(mutListFile, "w") as fout:
-            for mut in mutList:
-                fout.write(mut)
-        pdbid, chainID1, chainID2 = struc[:3]
-        write_partial_structure (pdbid,
-                                 [chainID1, chainID2],
-                                 pdbDir,
-                                 strucDir / 'complex.pdb')
-        
-        if write_hpc_jobfiles:
-            commands = [ '../bin/get_final_score.py %s/%s' % (serverDataDir, strucid) ]
-            if hpcCommands:
-                commands = hpcCommands + commands
-            write_hpc_job (jobDir / (strucid + '_job.txt'),
-                           nodes = nodes,
-                           ppn = ppn,
-                           pmem = pmem,
-                           walltime = walltime,
-                           outputfile = '%s/%s/outputfile' % (serverDataDir, strucid),
-                           errorfile = '%s/%s/errorfile' % (serverDataDir, strucid),
-                           rapid = rapid,
-                           jobid = username + '_bindprofx_' + strucid,
-                           commands = commands)
+# def read_mutation_ddg (inPath):
+#     
+#     """Read mutation change (loss) in binding free energy from file writen by 
+#     function "write_pdb_mapped_mutations".
+# 
+#     Args:
+#         inPath (str): file directory containing change in binding free energy. 
+# 
+#     """
+#     ddg = pd.DataFrame(columns=["protein",
+#                                 "partner",
+#                                 "protein_pos",
+#                                 "chain_pos",
+#                                 "pdb_id",
+#                                 "chain_mutation",
+#                                 "partner_chain",
+#                                 "submitted",
+#                                 "DDG"])
+#     c = -1
+#     with io.open(inPath, "r", encoding="utf-8") as f:
+#         next(f)
+#         for line in f:
+#             strsplit = list( map ( str.strip, line.split('\t') ) )
+#             if len(strsplit) == 9:
+#                 c += 1
+#                 ddg.loc[c] = strsplit
+#     ddg = ddg.drop_duplicates(subset = ["protein", "partner", "protein_pos"],
+#                               keep = 'first').reset_index(drop=True)
+#     ddg["protein_pos"] = ddg["protein_pos"].apply(int)
+#     ddg["chain_pos"] = ddg["chain_pos"].apply(int)
+#     ddg["DDG"] = ddg["DDG"].apply(float)
+#     return ddg

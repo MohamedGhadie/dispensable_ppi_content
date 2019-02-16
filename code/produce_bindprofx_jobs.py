@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
-from text_tools import read_bindprofx_mutations
-from structural_annotation import produce_bindprofx_jobs
+from text_tools import read_unprocessed_ddg_mutations, produce_bindprofx_jobs
 
 def main():
     
@@ -15,22 +14,22 @@ def main():
     interactome_name = interactome_names[ interactome_choise ]
     
     # directory for input data files
-    inDir = Path('../data/processed') / interactome_name
+    dataDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data/processed') / interactome_name
     
     # directory for output data files
-    outDir = inDir / 'bindprofx'
+    outDir = dataDir / 'bindprofx'
     
     # directory for PDB structure files
     pdbDir = Path('/Volumes/MG_Samsung/pdb_files')
     
     # input file containing mutations to submit to bindprofx
-    mutationsFile = inDir / 'all_mutations_onchains_ddg_7.txt'
+    mutationsFile = dataDir / 'disease_mutations_onchains_ddg.txt'
     
     # create output directories if not existing
     if not outDir.exists():
         os.makedirs( outDir )
     
-    mutations = read_bindprofx_mutations (mutationsFile)
+    mutations = read_unprocessed_ddg_mutations (mutationsFile, 'binding')
     
     produce_bindprofx_jobs (mutations,
                             pdbDir,

@@ -1,20 +1,14 @@
 from pathlib import Path
-from structural_annotation import copy_mutation_ddg
+from text_tools import copy_mutation_ddg
 
 def main():
     
-    # directory for input data files
-    inDir = Path('../data/processed')
+    dataDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data/processed')
     
-    inPath1 = inDir / 'HI-II-14' / 'all_mutations_onchains_ddg_3.txt'
-    inPath2 = inDir / 'IntAct' / 'nondisease_mutations_onchains_ddg_6.txt'
-    outPath = inDir / 'IntAct' / 'nondisease_mutations_onchains_ddg_7.txt'
-    copy_mutation_ddg (inPath1, inPath2, outPath)
-    
-    inPath1 = inDir / 'HI-II-14' / 'all_mutations_onchains_ddg_3.txt'
-    inPath2 = inDir / 'IntAct' / 'disease_mutations_onchains_ddg_6.txt'
-    outPath = inDir / 'IntAct' / 'disease_mutations_onchains_ddg_7.txt'
-    copy_mutation_ddg (inPath1, inPath2, outPath)
+    inPath1 = dataDir / 'allinteractome_mutations_onchains_ddg.txt'
+    inPath2 = dataDir / 'IntAct' / 'disease_mutations_onchains.txt'
+    outPath = dataDir / 'IntAct' / 'disease_mutations_onchains_ddg.txt'
+    copy_mutation_ddg (inPath1, inPath2, outPath, 'binding')
 
 if __name__ == "__main__":
     main()

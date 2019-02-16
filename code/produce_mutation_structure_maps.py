@@ -37,14 +37,14 @@ def main():
     natMutEdgotypeFile = outDir / 'nondisease_mutation_edgotype_geometry.txt'
     disMutEdgotypeFile = outDir / 'disease_mutation_edgotype_geometry.txt'
     ProteinSeqFile = inDir / 'human_reference_sequences.pkl' 
-    chainMapFile = inDir / 'human_pdb_chain_map_filtered.txt'   
+    chainMapFile = outDir / 'struc_interactome_pdb_chain_map.txt'   
     chainSeqFile = inDir / 'chain_sequences.pkl'
     chainStrucResFile = inDir / 'chain_strucRes.pkl'
     interfaceAnnotatedInteractomeFile = outDir / 'human_interface_annotated_interactome.txt'
     
     # output data files
     natural_mutations_onchains_file = outDir / 'nondisease_mutations_onchains.txt'
-    disease_mutations_onchains_file = outDir / 'disease_mutations_onchains.txt'
+    disease_mutations_onchains_file = outDir / 'disease_mutations_onchains_test.txt'
     
     #------------------------------------------------------------------------------------
     # write edgetic mutations with structure mapping to file

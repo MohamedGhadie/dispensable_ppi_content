@@ -8,7 +8,7 @@ from pathlib import Path
 from random import sample
 from Bio.PDB import PDBParser
 from simple_tools import create_dir, isolate_pairs, merge_list_pairs
-from text_tools import read_list_table, write_hpc_job
+from text_tools import read_list_table
 from interactome_tools import (write_chain_annotated_interactome,
                                read_chain_annotated_interactome,
                                write_unmerged_interface_annotated_interactome,

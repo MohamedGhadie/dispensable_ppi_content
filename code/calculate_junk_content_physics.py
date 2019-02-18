@@ -19,8 +19,7 @@ import pickle
 import pandas as pd
 import numpy as np
 from pathlib import Path
-#from structural_annotation import read_mutation_ddg
-from text_tools import read_mutation_ddg
+from ddg_tools import read_protein_mutation_ddg
 from stat_tools import t_test, fisher_test, sderror, sderror_on_fraction, proportion_ratio_CI
 from plot_tools import bar_plot, multi_histogram_plot
 from mutation_interface_edgotype import energy_based_perturbation
@@ -81,8 +80,8 @@ def main():
     #------------------------------------------------------------------------------------
     
     # read change in binding free energy for interfacial mutations mapped on PDB chains
-    naturalMutationsDDG = read_mutation_ddg(naturalMutationsDDGFile)
-    diseaseMutationsDDG = read_mutation_ddg(diseaseMutationsDDGFile)
+    naturalMutationsDDG = read_protein_mutation_ddg(naturalMutationsDDGFile, 'binding')
+    diseaseMutationsDDG = read_protein_mutation_ddg(diseaseMutationsDDGFile, 'binding')
     
     naturalMutations = pd.DataFrame(columns=["protein", "partner", "protein_pos", "pdb_id", 
                                              "chain_mut", "partner_chain", "ddg"])

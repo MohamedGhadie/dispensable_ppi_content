@@ -1,8 +1,6 @@
 import os
 from pathlib import Path
-from text_tools import read_bindprofx_results
-from structural_annotation import (write_mutation_ddg_tofile,
-                                   produce_bindprofx_jobs)
+from ddg_tools import read_bindprofx_results, produce_bindprofx_jobs, write_mutation_ddg_tofile
 
 def main():
     
@@ -10,35 +8,38 @@ def main():
     interactome_names = ['HI-II-14', 'IntAct']
     
     # choose interactome (index in interactome_names)
-    interactome_choise = 0
+    interactome_choise = 1
     
     # select reference interactome
     interactome_name = interactome_names[ interactome_choise ]
     
-    # directory to save processed data specific to interactome
-    interactomeDir = Path('../data/processed') / interactome_name
+    # directory for input data files
+    dataDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data/processed') / interactome_name
     
     # directory for input data files
-    inDir = interactomeDir / 'bindprofx' / 'results_1'
+    inDir = dataDir / 'bindprofx' / 'results_1'
     
     # directory for output data files
-    outDir = interactomeDir / 'bindprofx'
+    outDir = dataDir / 'bindprofx'
     
     # directory for PDB structure files
     pdbDir = Path('/Volumes/MG_Samsung/pdb_files')
     
+    
     # create output directories if not existing
     if not outDir.exists():
-        os.makedirs( outDir )
+        os.makedirs(outDir)
     
     processed, unprocessed = read_bindprofx_results (inDir)
     
     write_mutation_ddg_tofile (processed,
-                               interactomeDir / 'nondisease_mutations_onchains_ddg_2.txt',
-                               interactomeDir / 'nondisease_mutations_onchains_ddg_3.txt')
+                               dataDir / 'nondisease_mutations_onchains_ddg.txt',
+                               dataDir / 'nondisease_mutations_onchains_ddg_2.txt',
+                               'binding')
     write_mutation_ddg_tofile (processed,
-                               interactomeDir / 'disease_mutations_onchains_ddg_2.txt',
-                               interactomeDir / 'disease_mutations_onchains_ddg_3.txt')
+                               dataDir / 'disease_mutations_onchains_ddg.txt',
+                               dataDir / 'disease_mutations_onchains_ddg_2.txt',
+                               'binding')
     
     produce_bindprofx_jobs (unprocessed,
                             pdbDir,

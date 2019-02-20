@@ -93,7 +93,7 @@ def read_bindprofx_results (inDir):
     strucDir = [dir for dir in strucDir if os.path.isdir(inDir / dir)]
     for strucID in strucDir:
         struc = tuple(strucID.split('_'))
-        if re.match(r'\D\S\d+\D', struc[-1]):
+        if len(struc) > 3:
             struc = struc[:-1]
         
         results = []
@@ -228,7 +228,7 @@ def read_foldx_results (inDir):
     for strucID in strucDirs:
         strucDir = inDir / strucID
         struc = tuple(strucID.split('_'))
-        if re.match(r'\D\S\d+\D', struc[-1]):
+        if len(struc) > 3:
             struc = struc[:-1]
         
         mutListFile = resultFile = None
@@ -278,13 +278,13 @@ def read_protein_mutation_ddg (inPath, type):
             linesplit = list( map ( str.strip, line.split('\t') ) )
             if len(linesplit) > 8:
                 if linesplit[8] is not 'X':
-                    protein, partner, pr_pos, pdbid, chainID, ch_pos, ch_mut, ch_partner, ddg = strsplit
+                    protein, partner, pr_pos, pdbid, chainID, ch_pos, ch_mut, ch_partner, ddg = linesplit
                     if type is 'binding':
                         k = protein, partner, int(pr_pos), ch_mut[-1]
-                        val = pdb_id, chainID, ch_partner, float(ddg)
+                        val = pdbid, chainID, ch_partner, ch_mut, float(ddg)
                     elif type is 'folding':
                         k = protein, int(pr_pos), ch_mut[-1]
-                        val = pdbid, chainID, float(ddg) 
+                        val = pdbid, chainID, ch_mut, float(ddg) 
                     if k not in ddgDict:
                         ddgDict[k] = val
     return ddgDict
@@ -301,9 +301,9 @@ def read_chain_mutation_ddg (inPath, type):
     with io.open(inPath, "r", encoding="utf-8") as f:
         next(f)
         for line in f:
-            strsplit = list( map ( str.strip, line.split('\t') ) )
-            if len(strsplit) > 8:
-                protein, partner, pr_pos, pdbid, chainID, ch_pos, ch_mut, ch_partner, ddg = strsplit[:9]
+            linesplit = list( map ( str.strip, line.split('\t') ) )
+            if len(linesplit) > 8:
+                protein, partner, pr_pos, pdbid, chainID, ch_pos, ch_mut, ch_partner, ddg = linesplit[:9]
                 if type is 'binding':
                     k = (pdbid,) + tuple(sorted([chainID, ch_partner])) + (ch_mut,)
                 elif type is 'folding':

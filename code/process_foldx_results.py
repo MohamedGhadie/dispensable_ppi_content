@@ -8,7 +8,7 @@ def main():
     interactome_names = ['HI-II-14', 'IntAct']
     
     # choose interactome (index in interactome_names)
-    interactome_choise = 0
+    interactome_choise = 1
     
     # select reference interactome
     interactome_name = interactome_names[ interactome_choise ]
@@ -17,10 +17,10 @@ def main():
     dataDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data/processed') / interactome_name
     
     # directory for input data files
-    inDir = dataDir / 'foldx_disMut' / 'results_1'
+    inDir = dataDir / 'foldx' / 'results_all_2'
     
     # directory for output data files
-    outDir = dataDir / 'foldx_disMut'
+    outDir = dataDir / 'foldx'
     
     # directory for PDB structure files
     pdbDir = Path('/Volumes/MG_Samsung/pdb_files')
@@ -32,12 +32,16 @@ def main():
     processed, unprocessed = read_foldx_results (inDir)
     
     write_mutation_ddg_tofile (processed,
-                               dataDir / 'nondisease_mutations_onchains_foldx_ddg.txt',
-                               dataDir / 'nondisease_mutations_onchains_foldx_ddg_2.txt',
+                               dataDir / 'all_mutations_foldx_ddg.txt',
+                               dataDir / 'all_mutations_foldx_ddg_2.txt',
                                'binding')
     write_mutation_ddg_tofile (processed,
-                               dataDir / 'disease_mutations_onchains.txt',
-                               dataDir / 'disease_mutations_onchains_foldx_ddg.txt',
+                               dataDir / 'nondisease_mutations_foldx_ddg.txt',
+                               dataDir / 'nondisease_mutations_foldx_ddg_2.txt',
+                               'binding')
+    write_mutation_ddg_tofile (processed,
+                               dataDir / 'disease_mutations_foldx_ddg.txt',
+                               dataDir / 'disease_mutations_foldx_ddg_2.txt',
                                'binding')
     
     produce_foldx_jobs (unprocessed,

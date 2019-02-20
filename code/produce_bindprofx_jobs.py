@@ -8,7 +8,7 @@ def main():
     interactome_names = ['HI-II-14', 'IntAct']
     
     # choose interactome (index in interactome_names)
-    interactome_choise = 1
+    interactome_choise = 0
     
     # select reference interactome
     interactome_name = interactome_names[ interactome_choise ]
@@ -23,7 +23,7 @@ def main():
     pdbDir = Path('/Volumes/MG_Samsung/pdb_files')
     
     # input file containing mutations to submit to bindprofx
-    mutationsFile = dataDir / 'disease_mutations_onchains_ddg.txt'
+    mutationsFile = dataDir / 'nondisease_mutations_bindprofx_ddg.txt'
     
     # create output directories if not existing
     if not outDir.exists():

@@ -870,6 +870,7 @@ def filter_and_merge_dbsnp_mutations (inDir, uniprotIDmapFile, pausetime, outPat
             nonpathogenic = newMut["assertion"].apply(lambda x:
                                                      x not in {'pathogenic',
                                                                'likely pathogenic',
+                                                               'drug-response',
                                                                'uncertain significance',
                                                                'other'})
             print('Common: %d' % sum(common))

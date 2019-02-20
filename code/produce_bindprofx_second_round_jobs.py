@@ -17,7 +17,7 @@ def main():
     dataDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data/processed') / interactome_name
     
     # directory for input data files
-    inDir = dataDir / 'bindprofx' / 'results_1'
+    inDir = dataDir / 'bindprofx' / 'results_all_12'
     
     # directory for output data files
     outDir = dataDir / 'bindprofx'
@@ -32,13 +32,17 @@ def main():
     
     processed, unprocessed = read_bindprofx_results (inDir)
     
+#     write_mutation_ddg_tofile (processed,
+#                                dataDir / 'nondisease_mutations_bindprofx_ddg.txt',
+#                                dataDir / 'nondisease_mutations_bindprofx_ddg_2.txt',
+#                                'binding')
+#     write_mutation_ddg_tofile (processed,
+#                                dataDir / 'disease_mutations_bindprofx_ddg.txt',
+#                                dataDir / 'disease_mutations_bindprofx_ddg_2.txt',
+#                                'binding')
     write_mutation_ddg_tofile (processed,
-                               dataDir / 'nondisease_mutations_onchains_ddg.txt',
-                               dataDir / 'nondisease_mutations_onchains_ddg_2.txt',
-                               'binding')
-    write_mutation_ddg_tofile (processed,
-                               dataDir / 'disease_mutations_onchains_ddg.txt',
-                               dataDir / 'disease_mutations_onchains_ddg_2.txt',
+                               dataDir / 'all_mutations_bindprofx_ddg.txt',
+                               dataDir / 'all_mutations_bindprofx_ddg_2.txt',
                                'binding')
     
     produce_bindprofx_jobs (unprocessed,

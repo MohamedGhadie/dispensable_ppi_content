@@ -30,7 +30,12 @@ def main():
     interactome_names = ['HI-II-14', 'IntAct']
     
     # choose interactome (index in interactome_names)
-    interactome_choise = 0
+    interactome_choise = 1
+    
+    # method of calculating mutation ∆∆G for which results will be used
+    # options: 'bindprofx' or 'foldx'
+    ddg_method = 'bindprofx'
+    #ddg_method = 'foldx'
     
     # Minimum reduction in binding free energy DDG required for interaction perturbation
     ddgCutoff = 0.5
@@ -65,15 +70,15 @@ def main():
         os.makedirs(figDir)
     
     # input data files
-    naturalMutationsDDGFile = inDir / 'nondisease_mutations_onchains_ddg.txt'
-    diseaseMutationsDDGFile = inDir / 'disease_mutations_onchains_ddg.txt'
-    geometryPerturbFile = inDir / 'filtered_mutation_perturbs_geometry_hgmd.pkl'
+    geometryPerturbFile = inDir / 'filtered_mutation_perturbs_geometry.pkl'
+    naturalMutationsDDGFile = inDir / ('nondisease_mutations_' + ddg_method + '_ddg.txt')
+    diseaseMutationsDDGFile = inDir / ('disease_mutations_' + ddg_method + '_ddg.txt')
     
     # output data files
-    physicsPerturbFile = outDir / 'mutation_perturbs_physics.pkl'
-    ddgOutputFile = outDir / 'mutation_∆∆G.xlsx'
-    edgotypeFile = outDir / 'mutation_edgotypes_physics.xlsx'
-    junkPPIFile = outDir / 'fraction_junk_PPIs_physics.pkl'
+    physicsPerturbFile = outDir / ('mutation_perturbs_physics_' + ddg_method + '.pkl')
+    ddgOutputFile = outDir / ('mutation_∆∆G_' + ddg_method + '.xlsx')
+    edgotypeFile = outDir / ('mutation_edgotypes_physics_' + ddg_method + '.xlsx')
+    junkPPIFile = outDir / ('fraction_junk_PPIs_physics_' + ddg_method + '.pkl')
         
     #------------------------------------------------------------------------------------
     # Fraction of mutation-targeted PPIs with ∆∆G exceeding a specified cutoff
@@ -83,13 +88,13 @@ def main():
     naturalMutationsDDG = read_protein_mutation_ddg(naturalMutationsDDGFile, 'binding')
     diseaseMutationsDDG = read_protein_mutation_ddg(diseaseMutationsDDGFile, 'binding')
     
-    naturalMutations = pd.DataFrame(columns=["protein", "partner", "protein_pos", "pdb_id", 
-                                             "chain_mut", "partner_chain", "ddg"])
+    naturalMutations = pd.DataFrame(columns=["protein", "partner", "protein_pos", "mut_res", 
+                                             "pdb_id", "chain_id", "chain_partner", "chain_mut", "ddg"])
     for i, item in enumerate(naturalMutationsDDG.items()):
         naturalMutations.loc[i] = item[0] + item[1]
     
-    diseaseMutations = pd.DataFrame(columns=["protein", "partner", "protein_pos", "pdb_id", 
-                                             "chain_mut", "partner_chain", "ddg"])
+    diseaseMutations = pd.DataFrame(columns=["protein", "partner", "protein_pos", "mut_res", 
+                                             "pdb_id", "chain_id", "chain_partner", "chain_mut", "ddg"])
     for i, item in enumerate(diseaseMutationsDDG.items()):
         diseaseMutations.loc[i] = item[0] + item[1]
     
@@ -164,29 +169,25 @@ def main():
     # prediction of PPI perturbation (i.e., using binding energy change)
     #------------------------------------------------------------------------------------
     
-    if physicsPerturbFile.is_file():
-        print( '\n' + 'Loading physics-based mutation edgotype predictions' )
-        with open(physicsPerturbFile, 'rb') as f:
+
+    if geometryPerturbFile.is_file():
+        print( '\n' + 'Loading geometry-based PPI perturbation predictions' )
+        with open(geometryPerturbFile, 'rb') as f:
             naturalPerturbs, diseasePerturbs = pickle.load(f)
     else:
-        if geometryPerturbFile.is_file():
-            print( '\n' + 'Loading geometry-based PPI perturbation predictions' )
-            with open(geometryPerturbFile, 'rb') as f:
-                naturalPerturbs, diseasePerturbs = pickle.load(f)
-        else:
-            print( '\n' + 'Geometry-based PPI perturbation prediction file not found' )
-            return
+        print( '\n' + 'Geometry-based PPI perturbation prediction file not found' )
+        return
 
-        print( '\n' + 'Performing physics-based edgotype prediction for non-disease mutations' )
-        naturalPerturbs["perturbations"], knownDDG, unknownDDG = energy_based_perturbation (naturalPerturbs,
-                                                                                            naturalMutationsDDG,
-                                                                                            ddgCutoff)
-        print( '\n' + 'Performing physics-based edgotype prediction for disease mutations' )
-        diseasePerturbs["perturbations"], knownDDG, unknownDDG = energy_based_perturbation (diseasePerturbs,
-                                                                                            diseaseMutationsDDG,
-                                                                                            ddgCutoff)
-        with open(physicsPerturbFile, 'wb') as fOut:
-            pickle.dump([naturalPerturbs, diseasePerturbs], fOut)
+    print( '\n' + 'Performing physics-based edgotype prediction for non-disease mutations' )
+    naturalPerturbs["perturbations"], knownDDG, unknownDDG = energy_based_perturbation (naturalPerturbs,
+                                                                                        naturalMutationsDDG,
+                                                                                        ddgCutoff)
+    print( '\n' + 'Performing physics-based edgotype prediction for disease mutations' )
+    diseasePerturbs["perturbations"], knownDDG, unknownDDG = energy_based_perturbation (diseasePerturbs,
+                                                                                        diseaseMutationsDDG,
+                                                                                        ddgCutoff)
+    with open(physicsPerturbFile, 'wb') as fOut:
+        pickle.dump([naturalPerturbs, diseasePerturbs], fOut)
         
     perturbations = [[p for p in pert if not np.isnan(p)] for pert in naturalPerturbs["perturbations"].values]
     perturbations = [p for p in perturbations if p]

@@ -14,7 +14,13 @@ def main():
     
     # prediction methods for which results can be plotted
     # options: geometry, physics
-    pred_method = 'geometry'
+    #pred_method = 'geometry'
+    pred_method = 'physics'
+    
+    # method of calculating mutation ∆∆G for which results will be used in physics-based approach
+    # options: 'bindprofx' or 'foldx'
+    ddg_method = 'bindprofx'
+    #ddg_method = 'foldx'
     
     # reference interactome names
     interactome_names = ['HI-II-14', 'IntAct', 'experiment']
@@ -23,7 +29,8 @@ def main():
     struc_interactome_names = ['Y2H-SI', 'IntAct-SI', 'experiment']
     
     # interactome colors for plot
-    interactome_colors = ['blue', 'green', 'red']
+    #interactome_colors = ['blue', 'green', 'red']
+    interactome_colors = ['black', 'black', 'black']
     
     # plot confidence interval for the fraction of junk PPIs
     plotConfidenceIntervals = True
@@ -42,6 +49,9 @@ def main():
     # create output directories if not existing
     if not figDir.exists():
         os.makedirs(figDir)
+    
+    if pred_method is 'physics':
+        pred_method = '_'.join((pred_method, ddg_method))
     
     # input data files
     junkPPIFile_names = ('fraction_junk_PPIs_%s.pkl' % pred_method,
@@ -87,7 +97,7 @@ def main():
              xbounds = (1,3),
              show = showFigs,
              figdir = figDir,
-             figname = 'Fraction_junk_PPIs_geometrybased')
+             figname = 'Fraction_junk_PPIs_%s' % pred_method)
 
 if __name__ == "__main__":
     main()

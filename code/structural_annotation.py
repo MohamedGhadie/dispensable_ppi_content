@@ -674,6 +674,7 @@ def write_pdb_mapped_mutations (mutations,
                                 chainStrucResFile,
                                 pdbDir,
                                 outPath,
+                                chainInterfaceFile = None,
                                 downloadPDB = True,
                                 suppressWarnings = False):
     """Map mutations onto PDB chains and write to file the mutation, host protein, partner
@@ -690,12 +691,23 @@ def write_pdb_mapped_mutations (mutations,
         outPath (str): file directory to save mapped mutations to. 
 
     """
+    global known_interfaces
     clear_structures()
+    clear_interfaces()
     allow_pdb_downloads (downloadPDB)
     suppress_pdb_warnings (suppressWarnings)
     load_dictionaries (chainSequenceFile=chainSeqFile, chainStrucResLabelFile=chainStrucResFile)
     interactome = read_interface_annotated_interactome(interactomeFile)
     chainMap = read_list_table(chainMapFile, ['Qpos', 'Spos'], [int, int], '\t')
+    
+    check_interface = False
+    if chainInterfaceFile:
+        if chainInterfaceFile.is_file():
+            print('\t' + 'loading chain interfaces')
+            read_chain_interfaces(chainInterfaceFile)
+            check_interface = True
+        else:
+            warnings.warn('Chain interface file not found. Mutations will be mapped onto structure without checking interface')
     
     print('\t' + 'writing mutations')
     with io.open(outPath, "a") as fout:
@@ -747,6 +759,12 @@ def write_pdb_mapped_mutations (mutations,
                                     # make sure chain wildtype residue is different than mutation residue
                                     mappings["chainRes"] = mappings["posMaps"].apply(lambda x: return_chain_sequence(ch1)[x-1])
                                     mappings = mappings[mappings["chainRes"] != mut.Mut_res]
+                                    if check_interface:
+                                        k = ch1 + '-' + ch2
+                                        interfacial = mappings["posMaps"].apply(lambda x: x in known_interfaces[k]
+                                                                                          if k in known_interfaces
+                                                                                          else False)
+                                        mappings = mappings[interfacial]
                                     if not mappings.empty:
                                         # select the first position map from alignment table
                                         chainRes, mapPos = mappings[["chainRes","posMaps"]].iloc[0]

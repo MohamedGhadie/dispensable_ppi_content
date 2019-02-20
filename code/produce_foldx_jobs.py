@@ -17,13 +17,13 @@ def main():
     dataDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data/processed') / interactome_name
     
     # directory for output data files
-    outDir = dataDir / 'foldx_disMut'
+    outDir = dataDir / 'foldx'
     
     # directory for PDB structure files
     pdbDir = Path('/Volumes/MG_Samsung/pdb_files')
     
     # input file containing mutations to submit to bindprofx
-    mutationsFile = dataDir / 'disease_mutations_onchains_foldx_ddg.txt'
+    mutationsFile = dataDir / 'disease_mutations_foldx_ddg.txt'
     
     # create output directories if not existing
     if not outDir.exists():

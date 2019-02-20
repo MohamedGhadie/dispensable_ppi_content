@@ -93,22 +93,23 @@ def single_mutation_PPI_perturb (protein, interfaces, pos, dist):
 def energy_based_perturbation (perturbs, ddg, cutoff, probabilistic = False):
 
     knownDDG = unknownDDG = 0
-    pertProb = sum([d > cutoff for _, _, _, d in ddg.values()]) / len(ddg)
+    pertProb = sum([d > cutoff for _, _, _, _, d in ddg.values()]) / len(ddg)
     seed()
     allPred = []
-    for protein, pos, partners, perturbations in perturbs[["Protein",
-                                                           "Mutation_Position",
-                                                           "partners",
-                                                           "perturbations"]].values:
+    for protein, pos, mut_res, partners, perturbations in perturbs[["Protein",
+                                                                    "Mutation_Position",
+                                                                    "Mut_res",
+                                                                    "partners",
+                                                                    "perturbations"]].values:
         pred = []
         for p, pert in zip(partners, perturbations):
             if pert == 0:
                 pred.append(0)
             else:
-                k = protein, p, pos
+                k = protein, p, pos, mut_res
                 if k in ddg:
                     knownDDG += 1
-                    pdb_id, chain_mut, partner_chain, ddgVal = ddg[k]
+                    pdb_id, chainID, ch_partner, chain_mut, ddgVal = ddg[k]
                     pred.append(1 if ddgVal > cutoff else 0)
                 else:
                     unknownDDG += 1

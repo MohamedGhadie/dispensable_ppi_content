@@ -16,30 +16,21 @@
 
 import os
 import pickle
-import pandas as pd
 import numpy as np
 from pathlib import Path
-from interactome_tools import read_interface_annotated_interactome
+from text_tools import write_list_table
 from stat_tools import fisher_test, sderror_on_fraction, proportion_ratio_CI
 from plot_tools import pie_plot
-from mutation_interface_edgotype import mutation_PPI_interface_perturbations
+from mutation_interface_edgotype import assign_edgotypes
 
 def main():
     
-    # valid reference interactome names
-    interactome_names = ['HI-II-14', 'IntAct']
+    # reference interactome name. Options: 'HI-II-14' or 'IntAct'
+    interactome_name = 'IntAct'
     
-    # choose interactome (index in interactome_names)
-    interactome_choise = 1
-    
-    # database options for processed disease mutations
-    disMut_dbs = ['HGMD', 'ClinVar']
-    
-    # disease mutation database choice (index in disease_databases)
-    disMut_db_choice = 1
-    
-    # selected disease mutation database
-    disMut_db = disMut_dbs [disMut_db_choice]
+    # set to True to calculate junk PPI content using fraction of mono-edgetic mutations 
+    # instead of edgetic mutations
+    mono_edgetic = False
     
     # calculate confidence interval for the fraction of junk PPIs
     computeConfidenceIntervals = True
@@ -50,259 +41,78 @@ def main():
     # show figures
     showFigs = False
     
-    # selected reference interactome
-    interactome_name = interactome_names [interactome_choise]
+    # directory of processed data files shared by all interactomes
+    dataDir = Path('../data') / 'processed'
     
-    dataDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data')
+    # directory of processed data files specific to interactome
+    interactomeDir = dataDir / interactome_name
     
-    # directory to save processed data shared by all interactomes
-    inDir = dataDir / 'processed'
-    
-    # directory to save processed data specific to interactome
-    outDir = dataDir / 'processed' / interactome_name
+    # directory to save output data files
+    outDir = interactomeDir
     
     # figure directory
     figDir = Path('../figures') / interactome_name
     
     # create output directories if not existing
+    if not interactomeDir.exists():
+        os.makedirs(interactomeDir)
     if not outDir.exists():
         os.makedirs(outDir)
     if not figDir.exists():
         os.makedirs(figDir)
     
     # input data files
-    ProteinSeqFile = inDir / 'human_reference_sequences.pkl'    
-    chainSeqFile = inDir / 'chain_sequences.pkl'
-    chainListFile = inDir / 'pdb_seqres_chains.list'
-    pdbChainsFile = inDir / 'pdb_seqres_chains.pkl'
-    chainResOrderFile = inDir / 'chain_seqres_order.pkl'
-    chainMapFile = inDir / 'human_pdb_chain_map_filtered.txt'
-    dbsnpMutationsFile = inDir / 'dbsnp_mutations4.txt'
-    hgmdMutationsFile = inDir / 'HGMD_missense_DM_mutations_matched.txt'
-    clinvarMutationsFile = inDir / 'clinvar_mutations6.txt'
-    interfaceAnnotatedInteractomeFile = outDir / 'human_interface_annotated_interactome.txt'
+    uniqueMutationPerturbsFile = interactomeDir / 'unique_mutation_perturbs_geometry.pkl'
     
     # output data files
-    mutationPerturbFile = outDir / 'mutation_perturbs_geometry.pkl'
-    filteredMutationPerturbFile = outDir / 'filtered_mutation_perturbs_geometry.pkl'
     natMutEdgotypeFile = outDir / 'nondisease_mutation_edgotype_geometry.txt'
     disMutEdgotypeFile = outDir / 'disease_mutation_edgotype_geometry.txt'
-    edgotypeFile = outDir / 'mutation_edgotypes_geometry.xlsx'
-    junkPPIFile = outDir / 'fraction_junk_PPIs_geometry.pkl'
+    junkPPIFile = outDir / ('fraction_junk_PPIs_geometry%s.pkl' % ('_monoedgetic' if mono_edgetic else ''))
     
     #------------------------------------------------------------------------------------
-    # further process mutations
+    # Load interactome perturbations
     #------------------------------------------------------------------------------------
     
-    # load processed mutations
-    print( '\n' + 'Reading processed mutations' )
-    naturalMutations = pd.read_table(dbsnpMutationsFile, sep='\t')
-    if disMut_db is 'HGMD':
-        diseaseMutations = pd.read_table(hgmdMutationsFile, sep='\t')
-    elif disMut_db is 'ClinVar':
-        diseaseMutations = pd.read_table(clinvarMutationsFile, sep='\t')
-    
-    naturalSequenceMatch = sum(naturalMutations["seq_match"])
-    diseaseSequenceMatch = sum(diseaseMutations["Seq_match"])
-    print( '\n' + '%d non-disease mutations matching to UniProt sequence (%.1f %%)'
-            % (naturalSequenceMatch, 100 * naturalSequenceMatch / len(naturalMutations)) )
-    print( '%d disease mutations matching to UniProt sequence (%.1f %%)'
-            % (diseaseSequenceMatch, 100 * diseaseSequenceMatch / len(diseaseMutations)) )
-    
-    # keep only mutations matching to UniProt sequence
-    naturalMutations = naturalMutations[naturalMutations["seq_match"]].reset_index(drop=True)
-    diseaseMutations = diseaseMutations[diseaseMutations["Seq_match"]].reset_index(drop=True)
-    
-    # rename columns
-    naturalMutations.rename(columns={"protein":"Protein",
-                                     "residue":"Mut_res",
-                                     "aa_position":"Mutation_Position",
-                                     "context":"WT_context",
-                                     "mut_context_pos":"Mut_context_pos",
-                                     "allele":"Frequency_reporting_allele",
-                                     "allele.1": "Variation_allele"}, inplace=True)
-    
-    naturalMutations["wt_res"] = naturalMutations.apply(lambda x:
-                                                        x["WT_context"][x["Mut_context_pos"]-1],
-                                                        axis=1)
-    
-    if disMut_db is 'HGMD':
-        diseaseMutations.rename(columns={"Codon_number":"Mutation_Position"}, inplace=True)
-        diseaseMutations["Mut_res"] = diseaseMutations.apply(lambda x:
-                                                             x["Mut_context"][x["Mut_context_pos"] - 1],
-                                                             axis=1)
-        diseaseMutations["wt_res"] = diseaseMutations.apply(lambda x: 
-                                                            x["WT_context"][x["Mut_context_pos"]-1],
-                                                            axis=1)
-    elif disMut_db is 'ClinVar':
-        diseaseMutations.rename(columns={"mut_res":"Mut_res",
-                                         "aa_position":"Mutation_Position",
-                                         "mut_context_pos":"Mut_context_pos"}, inplace=True)
-    
-    # identify common mutations overlapping in position with disease mutations
-    df = diseaseMutations[ ["Protein", "Mutation_Position"] ].copy()
-    df2 = naturalMutations[ ["Protein", "Mutation_Position"] ].copy()
-    df2 = df2.drop_duplicates().reset_index(drop=True)
-    df = df.append(df2, ignore_index=True)
-    duplicates = df.duplicated(keep='first')[ len(diseaseMutations) : ]
-    duplicates = duplicates.reset_index(drop=True)
-    print( '\n' + '%d unique non-disease variants overlap in location with disease mutations' % sum(duplicates) )
-    
-    # remove common mutations overlapping in position with disease mutations
-    for i, row in df2[ duplicates ].iterrows():
-        todrop = ( ( naturalMutations["Protein"] == row.Protein ) & 
-                   ( naturalMutations["Mutation_Position"] == row.Mutation_Position ) )
-        naturalMutations = naturalMutations[todrop == False]
-    print( 'Overlaping non-disease mutations removed' )
-    
-    numNaturalMutations = len(naturalMutations)
-    numDiseaseMutations = len(diseaseMutations)
-    
-    # remove invalid mutations, i.e., those with mutation residue similar to wild type
-    naturalMutations = naturalMutations [naturalMutations["wt_res"] != naturalMutations["Mut_res"]]
-    diseaseMutations = diseaseMutations [diseaseMutations["wt_res"] != diseaseMutations["Mut_res"]]
-    
-    print( '\n' + 'Number of invalid mutations removed (WT = Mut)' )
-    print( 'non-disease invalid mutations: %d' % (numNaturalMutations - len(naturalMutations)) )
-    print( 'disease invalid mutations: %d' % (numDiseaseMutations - len(diseaseMutations)) )
-    
-    numNaturalMutations = len(naturalMutations)
-    numDiseaseMutations = len(diseaseMutations)
-    
-    print( '\n' + 'Number of mutations after removing invalid mutations:' )
-    print( 'non-disease mutations: %d' % numNaturalMutations )
-    print( 'disease mutations: %d' % numDiseaseMutations )
-    
-    # remove duplicate mutations, by position and mutant residue
-    naturalMutations = naturalMutations.drop_duplicates(subset=["Protein",
-                                                                "Mutation_Position",
-                                                                "Mut_res"]).reset_index(drop=True)
-    diseaseMutations = diseaseMutations.drop_duplicates(subset=["Protein",
-                                                                "Mutation_Position",
-                                                                "Mut_res"]).reset_index(drop=True)
-    
-    numNaturalMutations = len(naturalMutations)
-    numDiseaseMutations = len(diseaseMutations)
-    
-    print( '\n' + 'Number of mutations after removing duplicates by position and mutant residue:' )
-    print( 'non-disease mutations: %d' % numNaturalMutations )
-    print( 'disease mutations: %d' % numDiseaseMutations )
-    
-    # plot fractions of disease and non-disease mutations
-    pie_plot([numNaturalMutations, numDiseaseMutations],
-             labels=['Non-disease\nmutations', 'Disease\nmutations'],
-             angle=90,
-             colors = ['turquoise', 'orangered'],
-             show = showFigs,
-             figdir = figDir,
-             figname = 'mutations')
-    
-    writer = pd.ExcelWriter(str(outDir / 'all_disease_mutations.xlsx'))
-    diseaseMutations.to_excel (writer, sheet_name = 'disease_mutations')
-    writer.save()
-    diseaseMutations.to_csv(outDir / 'all_disease_mutations.txt', index=False, sep='\t')
-    
-    #------------------------------------------------------------------------------------
-    # predict PPI perturbations
-    #------------------------------------------------------------------------------------
-    
-    # Consider PPI perturbations only for PPIs with this maximum number of interfaces 
-    # mapped from distinct PDB binding chain pairs.
-    # This parameter is irrelevent if the flag "merge_interfaces" is True.
-    # Set to inf for unlimited number of interfaces.
-    maxInterfaces = np.inf
-    
-    # Predict PPI perturbation if mutation is this number of residues away in sequence 
-    # from an interface residue. Set to 0 if mutation must be exactly at interface residue.
-    numResFromInterface = 0
-    
-    # Consider PPI perturbations only for PPIs with this minimum number of partners
-    minPartners = 1
-    
-    if mutationPerturbFile.is_file():
-        print( '\n' + 'Loading geometry-based PPI perturbation predictions' )
-        with open(mutationPerturbFile, 'rb') as f:
-            naturalMutations_perturb, diseaseMutations_perturb = pickle.load(f)
-    else:
-        print( '\n' + 'Predicting PPI perturbations based on geometry' )
-        annotatedInteractome = read_interface_annotated_interactome(interfaceAnnotatedInteractomeFile)
-        naturalMutations_perturb = mutation_PPI_interface_perturbations(naturalMutations,
-                                                                        annotatedInteractome,
-                                                                        maxInterfaces,
-                                                                        numResFromInterface)
-        diseaseMutations_perturb = mutation_PPI_interface_perturbations(diseaseMutations,
-                                                                        annotatedInteractome,
-                                                                        maxInterfaces,
-                                                                        numResFromInterface)
-        with open(mutationPerturbFile, 'wb') as fOut:
-            pickle.dump([naturalMutations_perturb, diseaseMutations_perturb], fOut)
-    
-    naturalPerturbs = naturalMutations.copy()
-    naturalPerturbs["partners"] = naturalMutations_perturb.apply(lambda x: x[0])
-    naturalPerturbs["perturbations"] = naturalMutations_perturb.apply(lambda x: x[1])
-    naturalPerturbs = naturalPerturbs[naturalPerturbs["partners"].apply(len) 
-                                      >= minPartners].reset_index(drop=True)
-        
-    diseasePerturbs = diseaseMutations.copy()
-    diseasePerturbs["partners"] = diseaseMutations_perturb.apply(lambda x: x[0])
-    diseasePerturbs["perturbations"] = diseaseMutations_perturb.apply(lambda x: x[1])
-    diseasePerturbs = diseasePerturbs[diseasePerturbs["partners"].apply(len) 
-                                      >= minPartners].reset_index(drop=True)
-        
-    # drop duplicate mutations based on location, regardless of residue type 
-    naturalPerturbs = naturalPerturbs.drop_duplicates(subset=["Protein",
-                                                              "Mutation_Position"]).reset_index(drop=True)
-    diseasePerturbs = diseasePerturbs.drop_duplicates(subset=["Protein",
-                                                              "Mutation_Position"]).reset_index(drop=True)
-    
-    print( '\n' + 'Number of mutations with PPI perturbation predictions after removing duplicates by position' )
-    print( 'non-disease: %d' % len(naturalPerturbs) )
-    print( 'disease: %d' % len(diseasePerturbs) )
-    
-    with open(filteredMutationPerturbFile, 'wb') as fOut:
-        pickle.dump([naturalPerturbs, diseasePerturbs], fOut)
+    with open(uniqueMutationPerturbsFile, 'rb') as f:
+        naturalPerturbs, diseasePerturbs = pickle.load(f)
     
     #------------------------------------------------------------------------------------
     # Assign mutation edgotypes
     #------------------------------------------------------------------------------------
     
     print( '\n' + 'Labeling mutation edgotypes' )
-    naturalPerturbs["Edgotype"] = naturalPerturbs["perturbations"].apply(lambda x:
-                                                                         'Edgetic' if sum(x > 0) > 0
-                                                                         else 'Non-edgetic')
-    diseasePerturbs["Edgotype"] = diseasePerturbs["perturbations"].apply(lambda x:
-                                                                         'Edgetic' if sum(x > 0) > 0
-                                                                         else 'Non-edgetic')
+    naturalPerturbs["edgotype"] = assign_edgotypes (naturalPerturbs["perturbations"].tolist(),
+                                                    mono_edgetic = False)
+    diseasePerturbs["edgotype"] = assign_edgotypes (diseasePerturbs["perturbations"].tolist(),
+                                                    mono_edgetic = False)
     
-    # write predicted interactome perturbations by non-disease mutations to excel file
-    naturalPerturbs_output = naturalPerturbs.copy()
-    naturalPerturbs_output["partners"] = naturalPerturbs_output["partners"].apply(lambda x: ','.join(x))
-    naturalPerturbs_output["perturbations"] = ( naturalPerturbs_output["perturbations"]
-                                                .apply(lambda x: ','.join(map(str, [int(np.ceil(k)) for k in x]))) )
+    if mono_edgetic:
+        print( '\n' + 'Labeling mono-edgetic mutations' )
+        naturalPerturbs["mono-edgotype"] = assign_edgotypes (naturalPerturbs["perturbations"].tolist(),
+                                                             mono_edgetic = True)
+        diseasePerturbs["mono-edgotype"] = assign_edgotypes (diseasePerturbs["perturbations"].tolist(),
+                                                             mono_edgetic = True)
     
-    # write predicted interactome perturbations by disease mutations to excel file
-    diseasePerturbs_output = diseasePerturbs.copy()
-    diseasePerturbs_output["partners"] = diseasePerturbs_output["partners"].apply(lambda x: ','.join(x))
-    diseasePerturbs_output["perturbations"] = ( diseasePerturbs_output["perturbations"]
-                                                .apply(lambda x: ','.join(map(str, [int(np.ceil(k)) for k in x]))) )
+    # write predicted mutation edgotypes to tab-delimited file
+    write_list_table (naturalPerturbs, ["partners", "perturbations"], natMutEdgotypeFile)
+    write_list_table (diseasePerturbs, ["partners", "perturbations"], disMutEdgotypeFile)
     
-    naturalPerturbs_output.to_csv(natMutEdgotypeFile, index=False, sep='\t')
-    diseasePerturbs_output.to_csv(disMutEdgotypeFile, index=False, sep='\t')
-    
-    writer = pd.ExcelWriter(str(edgotypeFile))
-    naturalPerturbs_output.to_excel (writer, sheet_name = 'Nondisease_mutations')
-    #output_columns = diseasePerturbs_output.columns.tolist()
-    diseasePerturbs_output.to_excel (writer, sheet_name = 'Disease_mutations')
-    writer.save()
-        
     #------------------------------------------------------------------------------------
     # Fraction of predicted edgetic mutations
     #------------------------------------------------------------------------------------
-        
-    numNaturalMut_edgetic = sum(naturalPerturbs["Edgotype"] == 'Edgetic')
-    numNaturalMut_nonedgetic = sum(naturalPerturbs["Edgotype"] == 'Non-edgetic')
-    numDiseaseMut_edgetic = sum(diseasePerturbs["Edgotype"] == 'Edgetic')
-    numDiseaseMut_nonedgetic = sum(diseasePerturbs["Edgotype"] == 'Non-edgetic')
+    
+    if mono_edgetic:
+        numNaturalMut_edgetic = sum(naturalPerturbs["mono-edgotype"] == 'mono-edgetic')
+        numNaturalMut_nonedgetic = sum(naturalPerturbs["mono-edgotype"].apply(lambda x: 
+                                                        x in ('non-edgetic', 'edgetic')))
+        numDiseaseMut_edgetic = sum(diseasePerturbs["mono-edgotype"] == 'mono-edgetic')
+        numDiseaseMut_nonedgetic = sum(diseasePerturbs["mono-edgotype"].apply(lambda x: 
+                                                        x in ('non-edgetic', 'edgetic')))
+    else:
+        numNaturalMut_edgetic = sum(naturalPerturbs["edgotype"] == 'edgetic')
+        numNaturalMut_nonedgetic = sum(naturalPerturbs["edgotype"] == 'non-edgetic')
+        numDiseaseMut_edgetic = sum(diseasePerturbs["edgotype"] == 'edgetic')
+        numDiseaseMut_nonedgetic = sum(diseasePerturbs["edgotype"] == 'non-edgetic')
     
     numNaturalMut_considered = numNaturalMut_edgetic + numNaturalMut_nonedgetic
     numDiseaseMut_considered = numDiseaseMut_edgetic + numDiseaseMut_nonedgetic
@@ -312,7 +122,8 @@ def main():
     fracNaturalMut_error = sderror_on_fraction(numNaturalMut_edgetic, numNaturalMut_considered)
     fracDiseaseMut_error = sderror_on_fraction(numDiseaseMut_edgetic, numDiseaseMut_considered)
     
-    print( '\n' + 'Fraction of predicted edgetic mutations:' )
+    label = 'monoedgetic' if mono_edgetic else 'edgetic'
+    print( '\n' + 'Fraction of predicted %s mutations:' % label )
     print( 'Non-disease mutations: %.3f (SE = %g, %d out of %d)' % (fracNaturalMut_edgetic,
                                                                     fracNaturalMut_error,
                                                                     numNaturalMut_edgetic,
@@ -331,13 +142,13 @@ def main():
              colors = ['thistle', 'mediumslateblue'],
              show = showFigs,
              figdir = figDir,
-             figname = 'non_disease_edgetic_mutations_geometrybased')
+             figname = 'non_disease_%s_mutations_geometry' % label)
     pie_plot([numDiseaseMut_nonedgetic, numDiseaseMut_edgetic],
              angle=90,
              colors = ['thistle', 'mediumslateblue'],
              show = showFigs,
              figdir = figDir,
-             figname = 'disease_edgetic_mutations_geometrybased')
+             figname = 'disease_%s_mutations_geometry' % label)
             
     #------------------------------------------------------------------------------------
     # apply Bayes' theorem to calculate the fraction of PPIs that are junk, i.e., 

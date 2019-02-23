@@ -1,26 +1,26 @@
 import os
 from pathlib import Path
 from text_tools import read_list_table
-from structural_annotation import write_pdb_mapped_mutations
+from structural_annotation import write_mutation_structure_maps
 
 def main():
     
-    # valid reference interactome names
-    interactome_names = ['HI-II-14', 'IntAct']
+    # reference interactome name. Options: 'HI-II-14' or 'IntAct'
+    interactome_name = 'HI-II-14'
     
-    # choose interactome (index in interactome_names)
-    interactome_choise = 1
-    
+    # allow PDB structure files to be downloaded
     download_pdbs = True
     
-    suppress_pdb_warnings = False
+    # suppress PDB warnings
+    suppress_pdb_warnings = True
     
-    # selected reference interactome
-    interactome_name = interactome_names [interactome_choise]
+    # directory of processed data files shared by all interactomes
+    dataDir = Path('../data') / 'processed'
     
-    dataDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data/processed')
+    # directory of processed data files specific to interactome
+    interactomeDir = dataDir / interactome_name
     
-    # directory to save processed data specific to interactome
+    # directory to save output data files
     outDir = dataDir / interactome_name
     
     # directory for PDB structure files
@@ -29,23 +29,25 @@ def main():
     # create output directories if not existing
     if not outDir.exists():
         os.makedirs(outDir)
+    if not interactomeDir.exists():
+        os.makedirs(interactomeDir)
     
     # input data files
-    natMutEdgotypeFile = outDir / 'nondisease_mutation_edgotype_geometry.txt'
-    disMutEdgotypeFile = outDir / 'disease_mutation_edgotype_geometry.txt'
-    ProteinSeqFile = dataDir / 'human_reference_sequences.pkl' 
-    chainMapFile = outDir / 'struc_interactome_pdb_chain_map.txt'   
+    ProteinSeqFile = dataDir / 'human_reference_sequences.pkl'    
     chainSeqFile = dataDir / 'chain_sequences.pkl'
     chainStrucResFile = dataDir / 'chain_strucRes.pkl'
-    interfaceAnnotatedInteractomeFile = outDir / 'human_interface_annotated_interactome.txt'
     chainInterfaceFile = dataDir / 'pdb_interfaces.txt'
+    chainMapFile = interactomeDir / 'struc_interactome_pdb_chain_map.txt'
+    natMutEdgotypeFile = interactomeDir / 'nondisease_mutation_edgotype_geometry.txt'
+    disMutEdgotypeFile = interactomeDir / 'disease_mutation_edgotype_geometry.txt'
+    interfaceAnnotatedInteractomeFile = interactomeDir / 'human_interface_annotated_interactome.txt'
     
     # output data files
     natural_mutations_onchains_file = outDir / 'nondisease_mutations_onchains.txt'
     disease_mutations_onchains_file = outDir / 'disease_mutations_onchains.txt'
     
     #------------------------------------------------------------------------------------
-    # write edgetic mutations with structure mapping to file
+    # write edgetic mutations mapped onto PPI structural models to file
     #------------------------------------------------------------------------------------
     
     naturalMutations = read_list_table (natMutEdgotypeFile,
@@ -58,39 +60,37 @@ def main():
     naturalMutations = naturalMutations[naturalMutations["Edgotype"] == 'Edgetic'].reset_index(drop=True)
     diseaseMutations = diseaseMutations[diseaseMutations["Edgotype"] == 'Edgetic'].reset_index(drop=True)
     
-    # write to file edgetic non-disease mutations and perturbed protein pair after mapping 
-    # mutation onto PDB chains
+    # write edgetic non-disease mutations
     if not natural_mutations_onchains_file.is_file():
         print( '\n' + 'Writing edgetic non-disease mutations with structure mapping to file ' 
                 + str( natural_mutations_onchains_file ) )
-        write_pdb_mapped_mutations (naturalMutations,
-                                    interfaceAnnotatedInteractomeFile,
-                                    chainMapFile,
-                                    chainSeqFile,
-                                    ProteinSeqFile,
-                                    chainStrucResFile,
-                                    pdbDir,
-                                    natural_mutations_onchains_file,
-                                    chainInterfaceFile = chainInterfaceFile,
-                                    downloadPDB = download_pdbs,
-                                    suppressWarnings = suppress_pdb_warnings)
+        write_mutation_structure_maps (naturalMutations,
+                                       interfaceAnnotatedInteractomeFile,
+                                       chainMapFile,
+                                       chainSeqFile,
+                                       ProteinSeqFile,
+                                       chainStrucResFile,
+                                       pdbDir,
+                                       natural_mutations_onchains_file,
+                                       chainInterfaceFile = chainInterfaceFile,
+                                       downloadPDB = download_pdbs,
+                                       suppressWarnings = suppress_pdb_warnings)
     
-    # write to file edgetic disease mutations and perturbed protein pairs after mapping 
-    # mutation onto PDB chains
+    # write edgetic disease mutations
     if not disease_mutations_onchains_file.is_file():
         print( '\n' + 'Writing edgetic disease mutations with structure mapping to file ' 
                 + str( disease_mutations_onchains_file ) )
-        write_pdb_mapped_mutations (diseaseMutations,
-                                    interfaceAnnotatedInteractomeFile,
-                                    chainMapFile,
-                                    chainSeqFile,
-                                    ProteinSeqFile,
-                                    chainStrucResFile,
-                                    pdbDir,
-                                    disease_mutations_onchains_file,
-                                    chainInterfaceFile = chainInterfaceFile,
-                                    downloadPDB = download_pdbs,
-                                    suppressWarnings = suppress_pdb_warnings)
+        write_mutation_structure_maps (diseaseMutations,
+                                       interfaceAnnotatedInteractomeFile,
+                                       chainMapFile,
+                                       chainSeqFile,
+                                       ProteinSeqFile,
+                                       chainStrucResFile,
+                                       pdbDir,
+                                       disease_mutations_onchains_file,
+                                       chainInterfaceFile = chainInterfaceFile,
+                                       downloadPDB = download_pdbs,
+                                       suppressWarnings = suppress_pdb_warnings)
 
 if __name__ == "__main__":
     main()

@@ -14,13 +14,15 @@ def main():
     
     # prediction methods for which results can be plotted
     # options: geometry, physics
-    #pred_method = 'geometry'
     pred_method = 'physics'
     
     # method of calculating mutation ∆∆G for which results will be used in physics-based approach
     # options: 'bindprofx' or 'foldx'
-    ddg_method = 'bindprofx'
-    #ddg_method = 'foldx'
+    ddg_method = 'foldx'
+    
+    # set to True to plot junk PPI content using fraction of mono-edgetic mutations 
+    # instead of edgetic mutations
+    mono_edgetic = True
     
     # reference interactome names
     interactome_names = ['HI-II-14', 'IntAct', 'experiment']
@@ -38,10 +40,11 @@ def main():
     # show figures
     showFigs = False
     
-    dataDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data')
+    # directory of processed data files shared by all interactomes
+    dataDir = Path('../data') / 'processed'
     
-    # directory to save processed data shared by all interactomes
-    inDir = dataDir / 'processed'
+    # directory of processed data files shared by all interactomes
+    inDir = dataDir
     
     # figure directory
     figDir = Path('../figures') / 'combined'
@@ -52,11 +55,20 @@ def main():
     
     if pred_method is 'physics':
         pred_method = '_'.join((pred_method, ddg_method))
+    if mono_edgetic:
+        pred_method = pred_method + '_monoedgetic'
     
     # input data files
     junkPPIFile_names = ('fraction_junk_PPIs_%s.pkl' % pred_method,
                          'fraction_junk_PPIs_%s.pkl' % pred_method,
                          'fraction_junk_PPIs_experiment.pkl')
+    
+#     if mono_edgetic:
+#         interactome_names = interactome_names[:-1]
+#         struc_interactome_names = struc_interactome_names[:-1]
+#         interactome_colors = interactome_colors[:-1]
+#         junkPPIFile_names = junkPPIFile_names[:-1]
+    numInteractomes = len(interactome_names)
     
     pN_E_results, pN_E_bounds = [], []
     for interactome_name, junkPPIFile_name in zip(interactome_names, junkPPIFile_names):
@@ -87,14 +99,13 @@ def main():
              msize = 11,
              ewidth = 1.25,
              ecolors = interactome_colors,
-             #ecolors = 'black',
              fontsize = 18,
-             xlim = [0.8, 3.1],
+             xlim = [0.8, numInteractomes + 0.1],
              ylim = [0, maxY],
              yMinorTicks = True,
              adjustBottom = 0.2,
              shiftBottomAxis = -0.1,
-             xbounds = (1,3),
+             xbounds = (1, numInteractomes - 1) if mono_edgetic else (1, numInteractomes),
              show = showFigs,
              figdir = figDir,
              figname = 'Fraction_junk_PPIs_%s' % pred_method)

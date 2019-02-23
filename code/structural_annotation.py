@@ -666,17 +666,17 @@ def write_pdb_mapped_mutations_old (mutations,
             if not perturbing:
                 print('\t\t' + 'perturbed PPI not found for mutation')
 
-def write_pdb_mapped_mutations (mutations,
-                                interactomeFile,
-                                chainMapFile,
-                                chainSeqFile,
-                                proteinSeqFile,
-                                chainStrucResFile,
-                                pdbDir,
-                                outPath,
-                                chainInterfaceFile = None,
-                                downloadPDB = True,
-                                suppressWarnings = False):
+def write_mutation_structure_maps (mutations,
+                                   interactomeFile,
+                                   chainMapFile,
+                                   chainSeqFile,
+                                   proteinSeqFile,
+                                   chainStrucResFile,
+                                   pdbDir,
+                                   outPath,
+                                   chainInterfaceFile = None,
+                                   downloadPDB = True,
+                                   suppressWarnings = False):
     """Map mutations onto PDB chains and write to file the mutation, host protein, partner
     protein, position on host protein, position on chain, PDB ID, chain_mutation 
     (WT res, chain ID, pos on chain, mut res), partner chain.

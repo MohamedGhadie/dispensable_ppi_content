@@ -4,21 +4,24 @@
 
 import os
 from pathlib import Path
-from text_tools import (filter_clinvar_mutations,
-                        decompose_clinvar_snp_mutations,
-                        map_clinvar_protein_refseq_IDs,
-                        remove_synon_nonsense_mutations,
-                        get_flanking_sequences,
-                        match_clinvar_flanking_sequences)
+from mutation_processing_tools import (filter_clinvar_mutations,
+                                       decompose_clinvar_snp_mutations,
+                                       map_clinvar_protein_refseq_IDs,
+                                       get_flanking_sequences,
+                                       match_flanking_sequences,
+                                       remove_synon_nonsense_mutations)
 
 def main():
     
-    dataDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data')
+    dataDir = Path('../data')
     
-    # directory for data files from external sources
-    inDir = dataDir / 'external'
+    # directory of data files from external sources
+    extDir = dataDir / 'external'
     
-    # directory to save processed data
+    # directory of processed data files shared by all interactomes
+    inDir = dataDir / 'processed'
+    
+    # directory to save output data files
     outDir = dataDir / 'processed'
         
     # create output directories if not existing
@@ -29,11 +32,11 @@ def main():
     flankingSeqSideLen = 10
     
     # input data files
-    allClinvarMutationsFile = inDir / 'variant_summary.txt'
-    UniprotIDmapFile = outDir / 'to_human_uniprotID_map.pkl'
-    rnaToProteinRefseqIDMapFile = outDir / 'human_rnaToProtein_refseqID_map.pkl'
-    refseqFile = outDir / 'refseq_human_protein_sequences.txt'
-    UniqueGeneSequenceFile = outDir / 'human_unique_gene_reference_sequences.txt'
+    allClinvarMutationsFile = extDir / 'variant_summary.txt'
+    UniprotIDmapFile = inDir / 'to_human_uniprotID_map.pkl'
+    rnaToProteinRefseqIDMapFile = inDir / 'human_rnaToProtein_refseqID_map.pkl'
+    refseqFile = inDir / 'refseq_human_protein_sequences.txt'
+    UniqueGeneSequenceFile = inDir / 'human_unique_gene_reference_sequences.txt'
     
     # output data files
     clinvarMutationsFile1 = outDir / 'clinvar_mutations1.txt'
@@ -67,33 +70,28 @@ def main():
                                             'criteria provided, single submitter'],
                                   uniprotIDmapFile = UniprotIDmapFile)
     
-    if not clinvarMutationsFile2.is_file():
-        print( 'Decomposing mutation names' )
-        decompose_clinvar_snp_mutations (clinvarMutationsFile1, clinvarMutationsFile2)
-    
-    if not clinvarMutationsFile3.is_file():
-        print( 'Mapping protein refseq IDs' )
-        map_clinvar_protein_refseq_IDs (clinvarMutationsFile2,
-                                        rnaToProteinRefseqIDMapFile,
-                                        clinvarMutationsFile3)
-    
-    if not clinvarMutationsFile4.is_file():
-        print( 'Removing synonymous and nonsense mutations' )
-        remove_synon_nonsense_mutations (clinvarMutationsFile3,
-                                         clinvarMutationsFile4)
-    
-    if not clinvarMutationsFile5.is_file():
-        print( 'Reading mutation flanking sequences from protein RefSeq transcripts' )
-        get_flanking_sequences (clinvarMutationsFile4,
-                                refseqFile,
-                                flankingSeqSideLen,
-                                clinvarMutationsFile5)
-    
-    if not clinvarMutationsFile6.is_file():
-        print( 'Matching RefSeq flanking sequences to UniProt sequences' )
-        match_clinvar_flanking_sequences (clinvarMutationsFile5,
-                                          UniqueGeneSequenceFile,
-                                          clinvarMutationsFile6)
+    print( 'Decomposing mutation names' )
+    decompose_clinvar_snp_mutations (clinvarMutationsFile1, clinvarMutationsFile2)
+
+    print( 'Mapping protein refseq IDs' )
+    map_clinvar_protein_refseq_IDs (clinvarMutationsFile2,
+                                    rnaToProteinRefseqIDMapFile,
+                                    clinvarMutationsFile3)
+
+    print( 'Reading mutation flanking sequences from protein RefSeq transcripts' )
+    get_flanking_sequences (clinvarMutationsFile3,
+                            refseqFile,
+                            flankingSeqSideLen,
+                            clinvarMutationsFile4)
+
+    print( 'Matching RefSeq flanking sequences to UniProt sequences' )
+    match_flanking_sequences (clinvarMutationsFile4,
+                              UniqueGeneSequenceFile,
+                              clinvarMutationsFile5)
+
+    print( 'Removing synonymous and nonsense mutations' )
+    remove_synon_nonsense_mutations (clinvarMutationsFile5,
+                                     clinvarMutationsFile6)
 
 if __name__ == "__main__":
     main()

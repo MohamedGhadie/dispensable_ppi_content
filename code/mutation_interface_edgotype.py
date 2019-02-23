@@ -2,7 +2,10 @@ import numpy as np
 from random import seed, random
 from simple_tools import reverseTuples
     
-def mutation_PPI_interface_perturbations (mutations, interactome, maxInterfaces, dist):
+def mutation_PPI_interface_perturbations (mutations,
+                                          interactome,
+                                          maxInterfaces = np.inf,
+                                          dist = 0):
     """Calculate the fraction of protein interaction interfaces in whose neighborhood 
         specified mutations occur. Neighborhood is defined within a specified number of 
         residues.
@@ -20,15 +23,28 @@ def mutation_PPI_interface_perturbations (mutations, interactome, maxInterfaces,
                 mutation.
     
     """
-    return mutations.apply(lambda x:
-                           single_mutation_PPI_perturbs(x["Protein"],
-                                                        interactome,
-                                                        maxInterfaces,
-                                                        x["Mutation_Position"],
-                                                        dist),
-                           axis=1)
+    perturbations = []
+    for protein, mut_pos in mutations[["protein", "mut_position"]].values:
+        perturbs = single_mutation_PPI_perturbs(protein,
+                                                mut_pos,
+                                                interactome,
+                                                maxInterfaces = maxInterfaces,
+                                                dist = dist)
+        perturbations.append(perturbs)
+    return perturbations
+#     return mutations.apply(lambda x:
+#                            single_mutation_PPI_perturbs(x["Protein"],
+#                                                         interactome,
+#                                                         maxInterfaces,
+#                                                         x["Mutation_Position"],
+#                                                         dist = dist),
+#                            axis=1)
 
-def single_mutation_PPI_perturbs (protein, interactome, maxInterfaces, pos, dist):
+def single_mutation_PPI_perturbs (protein,
+                                  pos,
+                                  interactome,
+                                  maxInterfaces = np.inf,
+                                  dist = 0):
     """Calculate the fraction of a protein's interaction interfaces with multiple partners 
         in whose neighborhood a mutation occurs. Neighborhood is defined within a specified  
         number of residues. 
@@ -59,15 +75,15 @@ def single_mutation_PPI_perturbs (protein, interactome, maxInterfaces, pos, dist
         
         PPIs_Perturbed = PPIs.apply(lambda x:
                                     single_mutation_PPI_perturb(x["Protein_1"],
-                                                                x["Interfaces"],
                                                                 pos,
-                                                                dist),
+                                                                x["Interfaces"],
+                                                                dist = dist),
                                     axis=1)
-        return (list(PPIs["Protein_2"]), PPIs_Perturbed.values)
+        return PPIs["Protein_2"].tolist(), PPIs_Perturbed.values
     else:
-        return ([], np.array([]))
+        return [], np.array([])
 
-def single_mutation_PPI_perturb (protein, interfaces, pos, dist):
+def single_mutation_PPI_perturb (protein, pos, interfaces, dist = 0):
     """Calculate the fraction of a protein's interaction interfaces in whose neighborhood 
         a mutation occurs. Neighborhood is defined within a specified number of residues. 
 
@@ -88,7 +104,7 @@ def single_mutation_PPI_perturb (protein, interfaces, pos, dist):
     onInterface = []
     for interface in leftside:
         onInterface.append(any([i in mutationNeighbor for i in interface]))
-    return sum(onInterface) / len(onInterface)
+    return sum(onInterface)
 
 def energy_based_perturbation (perturbs, ddg, cutoff, probabilistic = False):
 
@@ -96,9 +112,9 @@ def energy_based_perturbation (perturbs, ddg, cutoff, probabilistic = False):
     pertProb = sum([d > cutoff for _, _, _, _, d in ddg.values()]) / len(ddg)
     seed()
     allPred = []
-    for protein, pos, mut_res, partners, perturbations in perturbs[["Protein",
-                                                                    "Mutation_Position",
-                                                                    "Mut_res",
+    for protein, pos, mut_res, partners, perturbations in perturbs[["protein",
+                                                                    "mut_position",
+                                                                    "mut_res",
                                                                     "partners",
                                                                     "perturbations"]].values:
         pred = []
@@ -119,3 +135,23 @@ def energy_based_perturbation (perturbs, ddg, cutoff, probabilistic = False):
                         pred.append(np.nan)
         allPred.append(pred)
     return allPred, knownDDG, unknownDDG
+
+def assign_edgotypes (perturbs, mono_edgetic = False):
+    
+    edgotypes = []
+    for pert in perturbs:
+        etype = assign_edgotype (pert, mono_edgetic = mono_edgetic)
+        edgotypes.append(etype)
+    return edgotypes
+
+def assign_edgotype (perturbs, mono_edgetic = False):
+    
+    perturbs = [int(p > 0) for p in perturbs]
+    if (perturbs.count(1) >= 2) or (1 in perturbs and not mono_edgetic):
+        return 'edgetic'
+    elif np.nan in perturbs:
+        return '-'
+    elif perturbs.count(1) is 1:
+        return 'mono-edgetic'
+    else:
+        return 'non-edgetic'

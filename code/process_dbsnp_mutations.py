@@ -1,21 +1,21 @@
 #----------------------------------------------------------------------------------------
-# This script processes mutations from the ClinVar database.
+# This script processes mutations from the dbSNP database.
 #----------------------------------------------------------------------------------------
 
 from pathlib import Path
-from text_tools import (filter_and_merge_dbsnp_mutations,
-                        get_flanking_sequences,
-                        remove_dbsnp_synon_nonsense_mutations,
-                        match_masked_flanking_sequences)
+from mutation_processing_tools import (filter_and_merge_dbsnp_mutations,
+                                       get_flanking_sequences,
+                                       match_flanking_sequences,
+                                       remove_synon_nonsense_mutations)
 
 def main():
     
-    dataDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data/processed')
+    dataDir = Path('../data/processed')
     
-    # directory for data files from external sources
+    # directory of pre-processed dbSNP mutation files
     inDir = dataDir / 'dbsnp_intermediate'
     
-    # directory to save processed data
+    # directory to save output data files
     outDir = dataDir
     
     # number of residues included in each side of mutation flanking sequence
@@ -47,19 +47,20 @@ def main():
                                           pausetime,
                                           dbsnpMutationsFile1)
     
-    print( 'Reading dbSNP mutation flanking sequences from RefSeq transcripts' )
+    print( 'Reading mutation flanking sequences from RefSeq transcripts' )
     get_flanking_sequences (dbsnpMutationsFile1,
                             refseqFile,
                             flankingSeqSideLen,
                             dbsnpMutationsFile2)
-    
-    print( 'Removing dbSNP synonymous and nonsense mutations' )
-    remove_dbsnp_synon_nonsense_mutations (dbsnpMutationsFile2,
-                                           dbsnpMutationsFile3)
 
-    print( 'Mapping dbSNP flanking sequences onto UniProt sequences' )
-    match_masked_flanking_sequences (dbsnpMutationsFile3,
-                                     UniqueGeneSequenceFile,
+    print( 'Mapping flanking sequences onto UniProt sequences' )
+    match_flanking_sequences (dbsnpMutationsFile2,
+                              UniqueGeneSequenceFile,
+                              dbsnpMutationsFile3,
+                              mask = True)
+    
+    print( 'Removing synonymous and nonsense mutations' )
+    remove_synon_nonsense_mutations (dbsnpMutationsFile3,
                                      dbsnpMutationsFile4)
 
 if __name__ == "__main__":

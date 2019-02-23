@@ -24,8 +24,6 @@ from plot_tools import pie_plot
 
 def main():
     
-    run_locally = True
-    
     interactome_name = 'experiment'
     
     # calculate confidence interval for the fraction of junk PPIs
@@ -40,13 +38,17 @@ def main():
     # show figures
     showFigs = False
     
+    # parent directory of all data files
     dataDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data')
     
-    # directory for data files from external sources
+    # directory of data files from external sources
     inDir = dataDir / 'external'
     
-    # directory to save processed data shared by all interactomes
-    outDir = dataDir / 'processed' / interactome_name
+    # directory of processed data files specific to interactome
+    interactomeDir = dataDir / 'processed' / interactome_name
+    
+    # directory to save output data files
+    outDir = interactomeDir
     
     # figure directory
     if consider_exp_QuasiNull_perturbs:
@@ -54,15 +56,9 @@ def main():
     else:
         figDir = Path('../figures') / interactome_name
     
-    # directory for PDB structure files
-    if run_locally:
-        # directory for PDB structure files on local computer
-        pdbDir = Path('/Volumes/MG_Samsung/pdb_files')
-    else:
-        # directory for PDB structure files on server
-        pdbDir = Path('../../pdb_files')
-    
     # create output directories if not existing
+    if not interactomeDir.exists():
+        os.makedirs(interactomeDir)
     if not outDir.exists():
         os.makedirs(outDir)
     if not figDir.exists():

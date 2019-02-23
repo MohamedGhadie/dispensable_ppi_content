@@ -16,26 +16,25 @@
 
 import os
 import pickle
-import pandas as pd
 import numpy as np
 from pathlib import Path
-from ddg_tools import read_protein_mutation_ddg
-from stat_tools import t_test, fisher_test, sderror, sderror_on_fraction, proportion_ratio_CI
-from plot_tools import bar_plot, multi_histogram_plot
-from mutation_interface_edgotype import energy_based_perturbation
+from text_tools import write_list_table
+from stat_tools import fisher_test, sderror_on_fraction, proportion_ratio_CI
+from plot_tools import pie_plot
+from mutation_interface_edgotype import assign_edgotypes
 
 def main():
     
-    # valid reference interactome names
-    interactome_names = ['HI-II-14', 'IntAct']
-    
-    # choose interactome (index in interactome_names)
-    interactome_choise = 1
+    # reference interactome name. Options: 'HI-II-14' or 'IntAct'
+    interactome_name = 'IntAct'
     
     # method of calculating mutation ∆∆G for which results will be used
     # options: 'bindprofx' or 'foldx'
     ddg_method = 'bindprofx'
-    #ddg_method = 'foldx'
+    
+    # set to True to calculate junk PPI content using fraction of mono-edgetic mutations 
+    # instead of edgetic mutations
+    mono_edgetic = False
     
     # Minimum reduction in binding free energy DDG required for interaction perturbation
     ddgCutoff = 0.5
@@ -49,183 +48,115 @@ def main():
     # show figures
     showFigs = False
     
-    # selected reference interactome
-    interactome_name = interactome_names [interactome_choise]
+    # directory of processed data files shared by all interactomes
+    dataDir = Path('../data') / 'processed'
     
-    dataDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data')
+    # directory of processed data files specific to interactome
+    interactomeDir = dataDir / interactome_name
     
-    # directory to save processed data shared by all interactomes
-    inDir = dataDir / 'processed' / interactome_name
-    
-    # directory to save processed data specific to interactome
-    outDir = dataDir / 'processed' / interactome_name
+    # directory to save output data specific
+    outDir = dataDir / interactome_name
     
     # figure directory
     figDir = Path('../figures') / interactome_name
     
     # create output directories if not existing
+    if not interactomeDir.exists():
+        os.makedirs(interactomeDir)
     if not outDir.exists():
         os.makedirs(outDir)
     if not figDir.exists():
         os.makedirs(figDir)
     
     # input data files
-    geometryPerturbFile = inDir / 'filtered_mutation_perturbs_geometry.pkl'
-    naturalMutationsDDGFile = inDir / ('nondisease_mutations_' + ddg_method + '_ddg.txt')
-    diseaseMutationsDDGFile = inDir / ('disease_mutations_' + ddg_method + '_ddg.txt')
+    physicsPerturbsFile = interactomeDir / ('mutation_perturbs_physics_%s.pkl' % ddg_method)
     
     # output data files
-    physicsPerturbFile = outDir / ('mutation_perturbs_physics_' + ddg_method + '.pkl')
-    ddgOutputFile = outDir / ('mutation_∆∆G_' + ddg_method + '.xlsx')
-    edgotypeFile = outDir / ('mutation_edgotypes_physics_' + ddg_method + '.xlsx')
-    junkPPIFile = outDir / ('fraction_junk_PPIs_physics_' + ddg_method + '.pkl')
+    natMutEdgotypeFile = outDir / ('nondisease_mutation_edgotype_physics_%s.txt' % ddg_method)
+    disMutEdgotypeFile = outDir / ('disease_mutation_edgotype_physics_%s.txt' % ddg_method)
+    junkPPIFile = outDir / ('fraction_junk_PPIs_physics_%s_%s.pkl' % (ddg_method, 'monoedgetic' if mono_edgetic else ''))
+    
+    #------------------------------------------------------------------------------------
+    # Load interactome perturbations
+    #------------------------------------------------------------------------------------
+    
+    with open(physicsPerturbsFile, 'rb') as f:
+        naturalPerturbs, diseasePerturbs = pickle.load(f)
         
     #------------------------------------------------------------------------------------
-    # Fraction of mutation-targeted PPIs with ∆∆G exceeding a specified cutoff
+    # Assign mutation edgotypes
     #------------------------------------------------------------------------------------
     
-    # read change in binding free energy for interfacial mutations mapped on PDB chains
-    naturalMutationsDDG = read_protein_mutation_ddg(naturalMutationsDDGFile, 'binding')
-    diseaseMutationsDDG = read_protein_mutation_ddg(diseaseMutationsDDGFile, 'binding')
+    print( '\n' + 'Labeling mutation edgotypes' )
+    naturalPerturbs["edgotype"] = assign_edgotypes (naturalPerturbs["perturbations"].tolist(),
+                                                    mono_edgetic = False)
+    diseasePerturbs["edgotype"] = assign_edgotypes (diseasePerturbs["perturbations"].tolist(),
+                                                    mono_edgetic = False)
     
-    naturalMutations = pd.DataFrame(columns=["protein", "partner", "protein_pos", "mut_res", 
-                                             "pdb_id", "chain_id", "chain_partner", "chain_mut", "ddg"])
-    for i, item in enumerate(naturalMutationsDDG.items()):
-        naturalMutations.loc[i] = item[0] + item[1]
+    if mono_edgetic:
+        print( '\n' + 'Labeling mono-edgetic mutations' )
+        naturalPerturbs["mono-edgotype"] = assign_edgotypes (naturalPerturbs["perturbations"].tolist(),
+                                                             mono_edgetic = True)
+        diseasePerturbs["mono-edgotype"] = assign_edgotypes (diseasePerturbs["perturbations"].tolist(),
+                                                             mono_edgetic = True)
     
-    diseaseMutations = pd.DataFrame(columns=["protein", "partner", "protein_pos", "mut_res", 
-                                             "pdb_id", "chain_id", "chain_partner", "chain_mut", "ddg"])
-    for i, item in enumerate(diseaseMutationsDDG.items()):
-        diseaseMutations.loc[i] = item[0] + item[1]
+    # write predicted mutation edgotypes to tab-delimited file
+    write_list_table (naturalPerturbs, ["partners", "perturbations"], natMutEdgotypeFile)
+    write_list_table (diseasePerturbs, ["partners", "perturbations"], disMutEdgotypeFile)
     
-    writer = pd.ExcelWriter(str(ddgOutputFile))
-    naturalMutations.to_excel(writer, sheet_name = 'nondisease_mutations_∆∆G')
-    diseaseMutations.to_excel(writer, sheet_name = 'disease_mutations_∆∆G')
-    writer.save()
+    #------------------------------------------------------------------------------------
+    # Fraction of predicted edgetic mutations
+    #------------------------------------------------------------------------------------
     
-    natMutDDGs = naturalMutations["ddg"].apply(float).values
-    disMutDDGs = diseaseMutations["ddg"].apply(float).values
+    if mono_edgetic:
+        numNaturalMut_edgetic = sum(naturalPerturbs["mono-edgotype"] == 'mono-edgetic')
+        numNaturalMut_nonedgetic = sum(naturalPerturbs["mono-edgotype"].apply(lambda x: 
+                                                        x in ('non-edgetic', 'edgetic')))
+        numDiseaseMut_edgetic = sum(diseasePerturbs["mono-edgotype"] == 'mono-edgetic')
+        numDiseaseMut_nonedgetic = sum(diseasePerturbs["mono-edgotype"].apply(lambda x: 
+                                                        x in ('non-edgetic', 'edgetic')))
+    else:
+        numNaturalMut_edgetic = sum(naturalPerturbs["edgotype"] == 'edgetic')
+        numNaturalMut_nonedgetic = sum(naturalPerturbs["edgotype"] == 'non-edgetic')
+        numDiseaseMut_edgetic = sum(diseasePerturbs["edgotype"] == 'edgetic')
+        numDiseaseMut_nonedgetic = sum(diseasePerturbs["edgotype"] == 'non-edgetic')
     
-    numNatural_ddg_considered = len(natMutDDGs)
-    numDisease_ddg_considered = len(disMutDDGs)
+    numNaturalMut_considered = numNaturalMut_edgetic + numNaturalMut_nonedgetic
+    numDiseaseMut_considered = numDiseaseMut_edgetic + numDiseaseMut_nonedgetic
     
-    print( '\n' + 'Avg. change in binding energy (∆∆G) for mutation-targeted PPIs:' )
-    print( 'Non-disease: %.1f (SE = %g, n = %d)' % (np.mean(natMutDDGs),
-                                                    sderror(natMutDDGs),
-                                                    numNatural_ddg_considered) )
+    fracNaturalMut_edgetic = numNaturalMut_edgetic / numNaturalMut_considered
+    fracDiseaseMut_edgetic = numDiseaseMut_edgetic / numDiseaseMut_considered
+    fracNaturalMut_error = sderror_on_fraction(numNaturalMut_edgetic, numNaturalMut_considered)
+    fracDiseaseMut_error = sderror_on_fraction(numDiseaseMut_edgetic, numDiseaseMut_considered)
     
-    print( 'Disease: %.1f (SE = %g, n = %d)' % (np.mean(disMutDDGs),
-                                                sderror(disMutDDGs),
-                                                numDisease_ddg_considered) )
-    t_test(natMutDDGs, disMutDDGs)
+    label = 'monoedgetic' if mono_edgetic else 'edgetic'
+    print( '\n' + 'Fraction of predicted %s mutations:' % label )
+    print( 'Non-disease mutations: %.3f (SE = %g, %d out of %d)' % (fracNaturalMut_edgetic,
+                                                                    fracNaturalMut_error,
+                                                                    numNaturalMut_edgetic,
+                                                                    numNaturalMut_considered) )
     
-    multi_histogram_plot ([disMutDDGs, natMutDDGs],
-                          ['red', 'green'],
-                          xlabel = 'Change in binding free energy (∆∆G)',
-                          ylabel = 'Number of mutations',
-                          leg = ['Disease interfacial mutations', 'Non-disease interfacial mutations'],
-                          bins = 25,
-                          alpha = 0.7,
-                          fontsize = 24,
-                          show = showFigs,
-                          figdir = figDir,
-                          figname = 'mut_ddg_histogram')
+    print( 'Disease mutations: %.3f (SE = %g, %d out of %d)' % (fracDiseaseMut_edgetic,
+                                                                fracDiseaseMut_error,
+                                                                numDiseaseMut_edgetic,
+                                                                numDiseaseMut_considered) )
     
-    numNatural_ddg = sum( natMutDDGs > ddgCutoff )
-    numDisease_ddg = sum( disMutDDGs > ddgCutoff )
-    fracNatural_ddg = numNatural_ddg / numNatural_ddg_considered
-    fracDisease_ddg = numDisease_ddg / numDisease_ddg_considered
-    fracNatural_ddg_error = sderror_on_fraction( numNatural_ddg, numNatural_ddg_considered )
-    fracDisease_ddg_error = sderror_on_fraction( numDisease_ddg, numDisease_ddg_considered )
+    fisher_test([numNaturalMut_edgetic, numNaturalMut_nonedgetic],
+                [numDiseaseMut_edgetic, numDiseaseMut_nonedgetic])
     
-    print( '\n' + 'Fraction of mutation-targeted PPIs with ∆∆G > %.1f kcal/mol:' % ddgCutoff )
-    print( 'Non-disease: %.3f (SE = %g, ntot = %d)' % (fracNatural_ddg,
-                                                       fracNatural_ddg_error,
-                                                       numNatural_ddg_considered) )
-    
-    print( 'Disease: %.3f (SE = %g, ntot = %d)' % (fracDisease_ddg,
-                                                   fracDisease_ddg_error,
-                                                   numDisease_ddg_considered) )
-    
-    fisher_test([numNatural_ddg, numNatural_ddg_considered - numNatural_ddg],
-                [numDisease_ddg, numDisease_ddg_considered - numDisease_ddg])
-    
-    bar_plot([fracNatural_ddg, fracDisease_ddg],
-             error = [fracNatural_ddg_error, fracDisease_ddg_error],
-             xlabels = ('PPIs with\nnon-disease\nmutations\nat interface',
-                        'PPIs with\ndisease\nmutations\nat interface'),
-             ylabel = ('Fraction with ∆∆G > %.1f kcal/mol' % ddgCutoff),
-             ylabels = [0, 0.2, 0.4, 0.6, 0.8],
-             ylim = [0, 0.8],
-             colors = ['turquoise', 'orangered'],
-             barwidth = 0.6,
-             fontsize = 24,
+    pie_plot([numNaturalMut_nonedgetic, numNaturalMut_edgetic],
+             angle = 90,
+             colors = ['thistle', 'mediumslateblue'],
              show = showFigs,
              figdir = figDir,
-             figname = 'Sample_fraction_ddg_>%.1f' % ddgCutoff)
+             figname = 'non_disease_%s_mutations_physics' % label)
+    pie_plot([numDiseaseMut_nonedgetic, numDiseaseMut_edgetic],
+             angle=90,
+             colors = ['thistle', 'mediumslateblue'],
+             show = showFigs,
+             figdir = figDir,
+             figname = 'disease_%s_mutations_physics' % label)
     
-    #------------------------------------------------------------------------------------
-    # Fractions of predicted edgetic and mono-edgetic mutations using physics-based 
-    # prediction of PPI perturbation (i.e., using binding energy change)
-    #------------------------------------------------------------------------------------
-    
-
-    if geometryPerturbFile.is_file():
-        print( '\n' + 'Loading geometry-based PPI perturbation predictions' )
-        with open(geometryPerturbFile, 'rb') as f:
-            naturalPerturbs, diseasePerturbs = pickle.load(f)
-    else:
-        print( '\n' + 'Geometry-based PPI perturbation prediction file not found' )
-        return
-
-    print( '\n' + 'Performing physics-based edgotype prediction for non-disease mutations' )
-    naturalPerturbs["perturbations"], knownDDG, unknownDDG = energy_based_perturbation (naturalPerturbs,
-                                                                                        naturalMutationsDDG,
-                                                                                        ddgCutoff)
-    print( '\n' + 'Performing physics-based edgotype prediction for disease mutations' )
-    diseasePerturbs["perturbations"], knownDDG, unknownDDG = energy_based_perturbation (diseasePerturbs,
-                                                                                        diseaseMutationsDDG,
-                                                                                        ddgCutoff)
-    with open(physicsPerturbFile, 'wb') as fOut:
-        pickle.dump([naturalPerturbs, diseasePerturbs], fOut)
-        
-    perturbations = [[p for p in pert if not np.isnan(p)] for pert in naturalPerturbs["perturbations"].values]
-    perturbations = [p for p in perturbations if p]
-    edgetic = [sum(np.array(p) > 0) > 0 for p in perturbations]
-    numNaturalMut_edgetic = sum(edgetic)
-    numNaturalMut_considered = len(edgetic)
-    fracNaturalMut_edgetic = numNaturalMut_edgetic / numNaturalMut_considered
-    
-    print( 'Fraction of predicted non-disease edgetic mutations: %f (SEF = %g, ntot = %d)' 
-            % (fracNaturalMut_edgetic,
-               sderror_on_fraction(numNaturalMut_edgetic, numNaturalMut_considered),
-               numNaturalMut_considered) )
-    
-    perturbations = [[p for p in pert if not np.isnan(p)] for pert in diseasePerturbs["perturbations"].values]
-    perturbations = [p for p in perturbations if p]
-    edgetic = [sum(np.array(p) > 0) > 0 for p in perturbations]
-    numDiseaseMut_edgetic = sum(edgetic)
-    numDiseaseMut_considered = len(edgetic)
-    fracDiseaseMut_edgetic = numDiseaseMut_edgetic / numDiseaseMut_considered
-    
-    print( 'Fraction of predicted disease edgetic mutations: %f (SEF = %g, ntot = %d)' 
-            % (fracDiseaseMut_edgetic,
-               sderror_on_fraction(numDiseaseMut_edgetic, numDiseaseMut_considered),
-               numDiseaseMut_considered) )
-    
-    naturalPerturbsWrite = naturalPerturbs.copy()
-    naturalPerturbsWrite["partners"] = naturalPerturbsWrite["partners"].apply(lambda x: ','.join(x))
-    naturalPerturbsWrite["perturbations"] = naturalPerturbsWrite["perturbations"].apply(lambda x: ','.join(map(str, x)))
-    
-    diseasePerturbsWrite = diseasePerturbs.copy()
-    diseasePerturbsWrite["partners"] = diseasePerturbsWrite["partners"].apply(lambda x: ','.join(x))
-    diseasePerturbsWrite["perturbations"] = diseasePerturbsWrite["perturbations"].apply(lambda x: ','.join(map(str, x)))
-    
-    writer = pd.ExcelWriter(str(edgotypeFile))
-    naturalPerturbsWrite.to_excel(writer, sheet_name = 'nondisease_mutations')
-    diseasePerturbsWrite.to_excel(writer, sheet_name = 'disease_mutations')
-    writer.save()
-        
     #------------------------------------------------------------------------------------
     # apply Bayes' theorem to calculate the fraction of PPIs that are junk, i.e., 
     # effectively neutral under perturbation

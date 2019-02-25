@@ -1,3 +1,5 @@
+import os
+import io
 import pickle
 import pandas as pd
 import numpy as np
@@ -184,10 +186,10 @@ def get_all_go_terms(inPath, aspect = None):
     else:
         return list(goa.loc[goa["go_aspect"] == aspect, "go_id"])
 
-def produce_protein_expr_dict (inPath,
-                               uniprotIDmapFile,
-                               outPath,
-                               headers = None):
+def produce_illumina_expr_dict (inPath,
+                                uniprotIDmapFile,
+                                outPath,
+                                headers = None):
     """Make a dictionary of protein tissue expression, log2 transformed.
 
     Args:
@@ -202,7 +204,7 @@ def produce_protein_expr_dict (inPath,
     with open(uniprotIDmapFile, 'rb') as f:
         uniprotID = pickle.load(f)
     expr = pd.read_table(inPath, comment='#', sep="\t")
-    if headers is None:
+    if not headers:
         headers = list(range(1, 18))
     e = {}
     for _, row in expr.iterrows():
@@ -211,3 +213,36 @@ def produce_protein_expr_dict (inPath,
             e[id] = np.log2(np.array([row[k] for k in headers[1:]]))
     with open(outPath, 'wb') as fOut:
         pickle.dump(e, fOut)
+
+def produce_gtex_expr_dict (inDir, uniprotIDmapFile, outPath):
+    """Make a dictionary of protein tissue expression.
+
+    Args:
+        inDir (str): directory of gene tissue expression data files.
+        uniprotIDmapFile (Path): file directory containing dict of mappings to UniProt IDs.
+        outPath (str): file directory to save output dict to.
+
+    """
+    with open(uniprotIDmapFile, 'rb') as f:
+        uniprotID = pickle.load(f)
+    uniprotIDlist = list(uniprotID.values())
+    tissueExpr = {k:[] for k in uniprotIDlist}
+    tissues = []
+    filenames = [f for f in os.listdir(inDir) if f.endswith('.bed')]
+    for filename in filenames:
+        print('\t' + 'processing file %s' % filename)
+        inPath = inDir / filename
+        tissues.append(filename.split('.')[0])
+        with io.open(inPath, "r", encoding="utf-8") as f:
+            next(f)
+            expr = {}
+            for line in f:
+                linesplit = list(map(str.strip, line.split('\t')))
+                chr, start, end, gene_id = linesplit[:4]
+                id = uniprotID[gene_id] if gene_id in uniprotID else gene_id
+                expr[id] = np.mean(list(map(float,linesplit[4:])))
+            for id in uniprotIDlist:
+                tissueExpr[id].append(expr[id] if id in expr else np.nan)
+    print('\t' + 'Gene expression processed for %d tissues: %s' % (len(tissues), tissues))
+    with open(outPath, 'wb') as fOut:
+        pickle.dump(tissueExpr, fOut)

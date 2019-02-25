@@ -1,7 +1,5 @@
 #----------------------------------------------------------------------------------------
-# This script creates plots for interface mapping description and fraction of junk PPIs
-# for all structural interactomes together.
-# Run script 'predict_edgotypes_and_junkPPIs.py' before running this script.
+# Plot the fraction of junk PPIs calculated from predictions and experiments
 #----------------------------------------------------------------------------------------
 
 import os
@@ -63,13 +61,6 @@ def main():
                          'fraction_junk_PPIs_%s.pkl' % pred_method,
                          'fraction_junk_PPIs_experiment.pkl')
     
-#     if mono_edgetic:
-#         interactome_names = interactome_names[:-1]
-#         struc_interactome_names = struc_interactome_names[:-1]
-#         interactome_colors = interactome_colors[:-1]
-#         junkPPIFile_names = junkPPIFile_names[:-1]
-    numInteractomes = len(interactome_names)
-    
     pN_E_results, pN_E_bounds = [], []
     for interactome_name, junkPPIFile_name in zip(interactome_names, junkPPIFile_names):
         junkPPIFile = inDir / interactome_name / junkPPIFile_name
@@ -82,6 +73,7 @@ def main():
         else:
             pN_E_bounds.append( (0, 0) )
     
+    numInteractomes = len(interactome_names)
     if plotConfidenceIntervals:
         upper = [p + upper for p, (lower, upper) in zip(pN_E_results, pN_E_bounds)]
         maxY = max(upper)

@@ -19,6 +19,7 @@ import pickle
 import pandas as pd
 import numpy as np
 from pathlib import Path
+from text_tools import write_list_table
 from stat_tools import fisher_test, sderror_on_fraction, proportion_ratio_CI
 from plot_tools import pie_plot
 
@@ -39,7 +40,7 @@ def main():
     showFigs = False
     
     # parent directory of all data files
-    dataDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data')
+    dataDir = Path('../data')
     
     # directory of data files from external sources
     inDir = dataDir / 'external'
@@ -68,16 +69,16 @@ def main():
     edgotypeFile = inDir / "Sahni_2015_Table_S3.xlsx"
     
     # output data files
+    natMutEdgotypeFile = outDir / 'nondisease_mutation_edgotype_experiment.txt'
+    disMutEdgotypeFile = outDir / 'disease_mutation_edgotype_experiment.txt'
     junkPPIFile = outDir / 'fraction_junk_PPIs_experiment.pkl'
                    
     #------------------------------------------------------------------------------------
     # process experimental edgotype data
     #------------------------------------------------------------------------------------
     
-    expMutations = pd.read_excel( edgotypeFile,
-                                  sheet_name = 'Table S3C' )
-    expMutations_ppi = pd.read_excel( inDir / "Sahni_2015_Table_S3.xlsx",
-                                      sheet_name = 'Table S3A' )
+    expMutations = pd.read_excel(edgotypeFile, sheet_name = 'Table S3C')
+    expMutations_ppi = pd.read_excel(edgotypeFile, sheet_name = 'Table S3A')
     
     expMutations = expMutations[ expMutations["Edgotype_class"]
                                  .apply(lambda x: x in {'Edgetic',
@@ -107,6 +108,10 @@ def main():
                                         == 'Non-disease variant' ].reset_index( drop = True )
     expDiseaseMutations = expMutations[ expMutations["Category"]
                                         == 'Disease mutation' ].reset_index( drop = True )
+    
+    # write mutation edgotypes to tab-delimited file
+    write_list_table (expNaturalMutations, ["partners", "Mut_interaction", "WT_interaction", "perturbations"], natMutEdgotypeFile)
+    write_list_table (expDiseaseMutations, ["partners", "Mut_interaction", "WT_interaction", "perturbations"], disMutEdgotypeFile)
     
     #------------------------------------------------------------------------------------
     # Fraction of edgetic mutations in experiments

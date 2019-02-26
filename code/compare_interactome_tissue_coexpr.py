@@ -11,6 +11,7 @@ from pathlib import Path
 from interactome_tools import read_single_interface_annotated_interactome
 from protein_function import (produce_illumina_expr_dict,
                               produce_gtex_expr_dict,
+                              produce_hpa_expr_dict,
                               coexpr)
 from stat_tools import bootstrap_test, sderror
 from plot_tools import bar_plot
@@ -20,8 +21,8 @@ def main():
     # reference interactome name. Options: 'HI-II-14' or 'IntAct'
     interactome_name = 'HI-II-14'
     
-    # tissue expression database name. Options: 'Illumina', 'GTEx'
-    expr_db = 'GTEx'
+    # tissue expression database name. Options: 'Illumina', 'GTEx', 'HPA'
+    expr_db = 'HPA'
     
     # minimum number of tissue expression values required for protein pair tissue
     # co-expression to be considered
@@ -59,7 +60,9 @@ def main():
     # input data files
     illuminaExprFile = extDir / 'E-MTAB-513.tsv.txt'
     gtexDir = extDir / 'GTEx_Analysis_v7_eQTL_expression_matrices'
+    hpaExprFile = extDir / 'normal_tissue.tsv'
     UniprotIDmapFile = inDir / 'to_human_uniprotID_map.pkl'
+    UniqueGeneSwissProtIDFile = inDir / 'uniprot_unique_gene_reviewed_human_proteome.list'
     interactomeFile = interactomeDir / 'human_interactome.txt'
     structuralInteractomeFile = interactomeDir / 'human_interface_annotated_interactome.txt'
     
@@ -96,10 +99,29 @@ def main():
         elif expr_db is 'GTEx':
             produce_gtex_expr_dict (gtexDir,
                                     UniprotIDmapFile,
-                                    proteinExprFile)
+                                    proteinExprFile,
+                                    uniprotIDlistFile = UniqueGeneSwissProtIDFile)
+        elif expr_db is 'HPA':
+            produce_hpa_expr_dict (hpaExprFile,
+                                   UniprotIDmapFile,
+                                   proteinExprFile)
     
     with open(proteinExprFile, 'rb') as f:
         expr = pickle.load(f)
+    
+    if expr_db is 'HPA':
+        for k, v in expr.items():
+            for i, e in enumerate(v):
+                if e in ('High', 'Medium'):
+                    v[i] = 1
+                elif e in ('Low', 'Not detected'):
+                    v[i] = 0
+                else:
+                    v[i] = np.nan
+            expr[k] = np.array(v)
+        coexpr_method = 'hamming_dist'
+    else:
+        coexpr_method = 'pearson_corr'
     
     #-----------------------------------------------------------------------------------------
     # Calculate tissue co-expression for all interaction partners in the reference interactome
@@ -111,7 +133,8 @@ def main():
     refPPIs["coexpr"] = refPPIs.apply(lambda x: coexpr (x["Protein_1"],
                                                         x["Protein_2"],
                                                         expr,
-                                                        minTissues = coexprMinTissues), axis=1)
+                                                        minTissues = coexprMinTissues,
+                                                        method = coexpr_method), axis=1)
     
     #------------------------------------------------------------------------------------------
     # Calculate tissue co-expression for all interaction partners in the structural interactome
@@ -123,7 +146,8 @@ def main():
     strucPPIs["coexpr"] = strucPPIs.apply(lambda x: coexpr (x["Protein_1"],
                                                             x["Protein_2"],
                                                             expr,
-                                                            minTissues = coexprMinTissues), axis=1)
+                                                            minTissues = coexprMinTissues,
+                                                            method = coexpr_method), axis=1)
     
     # save tissue co-expression results for use by other scripts
     with open(coexprFile, 'wb') as fout:

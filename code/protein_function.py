@@ -4,7 +4,7 @@ import pickle
 import pandas as pd
 import numpy as np
 from scipy.stats.stats import pearsonr
-from simple_tools import valid_uniprot_id
+from simple_tools import valid_uniprot_id, is_numeric, hamming_dist
 
 def partner_sim (p1, p2, partners):
     """Calculate the fraction of interaction partners shared by two proteins.
@@ -55,7 +55,7 @@ def go_sim (p1, p2, goAssoc):
     else:
         return np.nan
 
-def coexpr (p1, p2, expr, minTissues = 3):
+def coexpr (p1, p2, expr, minTissues = 3, method = 'pearson_corr'):
     """Calculate the tissue co-expression for two proteins using Pearson's correlation
         coefficient.
 
@@ -65,6 +65,9 @@ def coexpr (p1, p2, expr, minTissues = 3):
         expr (dict): dictionary containing tissue expression values for each protein.
         minTissues (int): minimum required number of tissues with expression levels 
                             defined for both proteins.
+        method (str): method used to calculate coexpression. Set to 'pearson_corr' to return 
+                        Pearson's correlation coefficient, or 'hamming_dist' to return 
+                        1 - hamming_distance / length of valid columns.
     
     Returns:
         float: tissue co-expression if both proteins have expression values 
@@ -75,9 +78,14 @@ def coexpr (p1, p2, expr, minTissues = 3):
         e1 = expr[p1]
         e2 = expr[p2]
         not_nan = (np.isnan(e1) | np.isnan(e2)) == False
-        if sum(not_nan) >= minTissues:
-            corr, p = pearsonr(e1[not_nan], e2[not_nan])
-            return corr
+        numTissues = sum(not_nan)
+        if numTissues >= minTissues:
+            if method is 'pearson_corr':
+                corr, p = pearsonr(e1[not_nan], e2[not_nan])
+                return corr
+            elif method is 'hamming_dist':
+                dist = hamming_dist (e1[not_nan], e2[not_nan])
+                return 1 - dist / numTissues
     return np.nan
 
 def produce_protein_go_dictionaries (inPath,
@@ -214,7 +222,7 @@ def produce_illumina_expr_dict (inPath,
     with open(outPath, 'wb') as fOut:
         pickle.dump(e, fOut)
 
-def produce_gtex_expr_dict (inDir, uniprotIDmapFile, outPath):
+def produce_gtex_expr_dict (inDir, uniprotIDmapFile, outPath, uniprotIDlistFile = None):
     """Make a dictionary of protein tissue expression.
 
     Args:
@@ -225,24 +233,93 @@ def produce_gtex_expr_dict (inDir, uniprotIDmapFile, outPath):
     """
     with open(uniprotIDmapFile, 'rb') as f:
         uniprotID = pickle.load(f)
-    uniprotIDlist = list(uniprotID.values())
+    if uniprotIDlistFile:
+        with open(uniprotIDlistFile, 'r') as f:
+            uniprotIDlist = list(set(f.read().split()))
+    else:
+        uniprotIDlist = list(uniprotID.values())
     tissueExpr = {k:[] for k in uniprotIDlist}
-    tissues = []
     filenames = [f for f in os.listdir(inDir) if f.endswith('.bed')]
-    for filename in filenames:
-        print('\t' + 'processing file %s' % filename)
+    for i, filename in enumerate(filenames):
+        print('processing file %d of %d: %s' % (i + 1, len(filenames), filename))
+        expr, processed, skipped = {}, 0, 0
         inPath = inDir / filename
-        tissues.append(filename.split('.')[0])
-        with io.open(inPath, "r", encoding="utf-8") as f:
+#         matrix = pd.read_table(inPath, sep='\t')
+#         matrix["uniprot_id"] = matrix["gene_id"].apply(lambda x: uniprotID[x] if x in uniprotID else '-')
+#         matrix = matrix [matrix["uniprot_id"] != '-']
+#         matrix["avg_expr"] = matrix[matrix.columns[4:]].mean(axis=1)
+#         expr = {id:e for id, e in matrix[["uniprot_id", "avg_expr"]].values}
+#         with io.open(inPath, "r") as f:
+#             next(f)
+#             expr = {}
+#             for line in f:
+#                 linesplit = list(map(str.strip, line.split('\t')))
+#                 chr, start, end, gene_id = linesplit[:4]
+#                 id = uniprotID[gene_id] if gene_id in uniprotID else gene_id
+#                 expression = np.array([float(e) for e in linesplit[4:] if is_numeric(e)])
+#                 expr[id] = np.mean(expression[np.isnan(expression)==False])
+        with io.open(inPath, "r") as f:
             next(f)
-            expr = {}
-            for line in f:
-                linesplit = list(map(str.strip, line.split('\t')))
-                chr, start, end, gene_id = linesplit[:4]
-                id = uniprotID[gene_id] if gene_id in uniprotID else gene_id
-                expr[id] = np.mean(list(map(float,linesplit[4:])))
-            for id in uniprotIDlist:
-                tissueExpr[id].append(expr[id] if id in expr else np.nan)
-    print('\t' + 'Gene expression processed for %d tissues: %s' % (len(tissues), tissues))
+            while True:
+                try:
+                    line = f.readline()
+                    if line is '':
+                        break
+                    processed += 1
+                    linesplit = list(map(str.strip, line.strip().split('\t')))
+                    if len(linesplit) > 4:
+                        chr, start, end, gene_id = linesplit[:4]
+                        gene_id = gene_id.split('.')[0]
+                        id = uniprotID[gene_id] if gene_id in uniprotID else gene_id
+                        expression = np.array([float(e) for e in linesplit[4:] if is_numeric(e)])
+                        expr[id] = np.mean(expression[np.isnan(expression)==False])
+                except:
+                    skipped += 1
+                    pass
+        for id in uniprotIDlist:
+            tissueExpr[id].append(expr[id] if id in expr else np.nan)
+        print('%d lines processed. %d line not processed' % (processed, skipped))
+    for k, v in tissueExpr.items():
+        tissueExpr[k] = np.array(v)
     with open(outPath, 'wb') as fOut:
         pickle.dump(tissueExpr, fOut)
+
+def produce_hpa_expr_dict (inPath, uniprotIDmapFile, outPath):
+    """Make a dictionary of protein tissue expression.
+
+    Args:
+        inPath (str): file directory of gene tissue expression.
+        uniprotIDmapFile (Path): file directory containing dict of mappings to UniProt IDs.
+        outPath (str): file directory to save output dict to.
+
+    """
+    with open(uniprotIDmapFile, 'rb') as f:
+        uniprotID = pickle.load(f)
+    matrix = pd.read_table(inPath, sep='\t')
+    matrix = matrix [matrix['Reliability'] != 'Uncertain']
+    matrix["unique_tissue"] = matrix["Tissue"] + '_' + matrix["Cell type"]
+    matrix.rename(columns={"Gene name":"Gene_name"}, inplace=True)
+    
+    tissue_expr = {}
+    IDs = set()
+    for _, row in matrix.iterrows():
+        if row.Gene in uniprotID:
+            id = uniprotID[row.Gene]
+        elif row.Gene_name in uniprotID:
+            id = uniprotID[row.Gene_name]
+        else:
+            id = row.Gene_name
+        IDs.add(id)
+        tissue_expr[(id, row.unique_tissue)] = row.Level
+    
+    unique_tissues = list(set(matrix["unique_tissue"]))
+    expr_vectors = {}
+    for id in IDs:
+        expr = []
+        for tissue in unique_tissues:
+            k = id, tissue
+            expr.append(tissue_expr[k] if k in tissue_expr else '-')
+        expr_vectors[id] = expr
+        
+    with open(outPath, 'wb') as fOut:
+        pickle.dump(expr_vectors, fOut)

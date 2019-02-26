@@ -40,6 +40,11 @@ def is_numeric (s):
     except ValueError:
         return False
 
+def hamming_dist (a, b):
+    
+    assert len(a) == len(b), 'Vectors of unequal lengths passed to hamming distance'
+    return sum(c1 != c2 for c1, c2 in zip(a, b))
+
 def position_overlap (s1, e1, s2, e2):
     """Determine if two sequence positions overlap.
 	

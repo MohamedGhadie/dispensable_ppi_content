@@ -8,6 +8,7 @@ import pickle
 import pandas as pd
 import numpy as np
 from pathlib import Path
+from simple_tools import sample_random_pairs
 from interactome_tools import read_single_interface_annotated_interactome
 from protein_function import (produce_illumina_expr_dict,
                               produce_gtex_expr_dict,
@@ -19,7 +20,7 @@ from plot_tools import bar_plot
 def main():
     
     # reference interactome name. Options: 'HI-II-14' or 'IntAct'
-    interactome_name = 'HI-II-14'
+    interactome_name = 'IntAct'
     
     # tissue expression database name. Options: 'Illumina', 'GTEx', 'HPA'
     expr_db = 'HPA'
@@ -27,6 +28,9 @@ def main():
     # minimum number of tissue expression values required for protein pair tissue
     # co-expression to be considered
     coexprMinTissues = 5
+    
+    # number of random interactions
+    numRandomPairs = 10000
     
     # show figures
     showFigs = False
@@ -124,6 +128,20 @@ def main():
         coexpr_method = 'pearson_corr'
     
     #-----------------------------------------------------------------------------------------
+    # Calculate tissue co-expression for random interactions
+    #-----------------------------------------------------------------------------------------
+    
+    proteins = list(set(interactome[["Protein_1", "Protein_2"]].values.flatten()))
+    randomPairs = pd.DataFrame()
+    randomPairs["Protein_1"], randomPairs["Protein_2"] = zip(* sample_random_pairs (proteins, numRandomPairs))    
+    randomPairs["coexpr"] = randomPairs.apply(lambda x: coexpr (x["Protein_1"],
+                                                                x["Protein_2"],
+                                                                expr,
+                                                                minTissues = coexprMinTissues,
+                                                                method = coexpr_method), axis=1)
+    randomPairs = randomPairs [np.isnan(randomPairs["coexpr"]) == False].reset_index(drop=True)
+    
+    #-----------------------------------------------------------------------------------------
     # Calculate tissue co-expression for all interaction partners in the reference interactome
     #-----------------------------------------------------------------------------------------
     
@@ -135,6 +153,7 @@ def main():
                                                         expr,
                                                         minTissues = coexprMinTissues,
                                                         method = coexpr_method), axis=1)
+    refPPIs = refPPIs [np.isnan(refPPIs["coexpr"]) == False].reset_index(drop=True)
     
     #------------------------------------------------------------------------------------------
     # Calculate tissue co-expression for all interaction partners in the structural interactome
@@ -148,37 +167,52 @@ def main():
                                                             expr,
                                                             minTissues = coexprMinTissues,
                                                             method = coexpr_method), axis=1)
+    strucPPIs = strucPPIs [np.isnan(strucPPIs["coexpr"]) == False].reset_index(drop=True)
     
-    # save tissue co-expression results for use by other scripts
+    #-------------------------------------------------------------------------------------
+    # Save tissue co-expression results to file
+    #-------------------------------------------------------------------------------------
+    
+    allcoexpr = {k:coexpr for k, coexpr in zip(['Random interactions',
+                                                'Reference interactome',
+                                                'Structural interactome'],
+                                               [randomPairs, refPPIs, strucPPIs])}
     with open(coexprFile, 'wb') as fout:
-        pickle.dump([refPPIs, strucPPIs], fout)
+        pickle.dump(allcoexpr, fout)
     
     #------------------------------------------------------------------------------------
-    # Compare tissue co-expression of interaction partners between reference interactome 
-    # and structural interactome
+    # Compare tissue co-expression of interaction partners between reference interactome, 
+    # structural interactome and random interactions
     #------------------------------------------------------------------------------------
     
     # remove NaN values
-    refCoexpr = refPPIs["coexpr"][np.isnan(refPPIs["coexpr"]) == False].tolist()
-    strucCoexpr = strucPPIs["coexpr"][np.isnan(strucPPIs["coexpr"]) == False].tolist()
+    randCoexpr = randomPairs["coexpr"].tolist()
+    refCoexpr = refPPIs["coexpr"].tolist()
+    strucCoexpr = strucPPIs["coexpr"].tolist()
     
     # print results
     print('\n' + 'Mean tissue co-expression for interaction partners:')
+    print('Random interactions: %f (SE = %g, n = %d)' % (np.mean(randCoexpr),
+                                                         sderror(randCoexpr),
+                                                         len(randCoexpr)))
     print('Reference interactome: %f (SE = %g, n = %d)' % (np.mean(refCoexpr),
                                                            sderror(refCoexpr),
                                                            len(refCoexpr)))
     print('Structural interactome: %f (SE = %g, n = %d)' % (np.mean(strucCoexpr),
                                                             sderror(strucCoexpr),
                                                             len(strucCoexpr)))
-    print( 'Calculating statistical significance using bootstrap test' )
-    bootstrap_test(refCoexpr, strucCoexpr, iter = 10000)
+    print('\n' + 'Statistical significance')
+    print('reference interactome vs random interactions:')
+    bootstrap_test(refCoexpr, randCoexpr, iter = 10000)
+    print('structural interactome vs reference interactome:')
+    bootstrap_test(strucCoexpr, refCoexpr, iter = 10000)
     
     # plot results
-    bar_plot([ np.mean(refCoexpr), np.mean(strucCoexpr) ],
-             [ sderror(refCoexpr), sderror(strucCoexpr) ],
-             xlabels = ['Reference\ninteractome', 'Structural\ninteractome'],
+    bar_plot([ np.mean(randCoexpr), np.mean(refCoexpr), np.mean(strucCoexpr) ],
+             [ sderror(randCoexpr), sderror(refCoexpr), sderror(strucCoexpr) ],
+             xlabels = ['Random\ninteractions', 'Reference\ninteractome', 'Structural\ninteractome'],
              ylabel = 'Tissue co-expression of\ninteracting protein pairs',
-             colors = ['blue', 'red'],
+             colors = ['green', 'blue', 'red'],
              edgecolor = 'k',
              barwidth = 0.5,
              fontsize = 24,

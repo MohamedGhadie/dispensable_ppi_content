@@ -1,6 +1,7 @@
 import os
 import re
 from pathlib import Path
+from random import choices
 
 def valid_uniprot_id(s):
     """Check if a string is a valid UniProt accession ID
@@ -358,40 +359,8 @@ def merge_list_pairs (ls):
         elm2.extend(tup[1])
     return (sorted(set(elm1)), sorted(set(elm2)))
 
-# def binomial_prob (n,
-#                    k,
-#                    p_range,
-#                    lim = factorial(170),
-#                    div = 20):
-#     
-#     f = []
-#     comb = [n_choose_k(n, i) for i in k]
-#     for j, p in enumerate(p_range):
-#         s = 0
-#         for i, kk in enumerate(k):
-#             prob_terms = [p ** (kk/div) for d in range(div)]
-#             prob_terms_2 = [(1 - p) ** ((n - kk)/div) for d in range(div)]
-#             prob_terms.extend(prob_terms_2)
-#             if comb[i] > lim:
-#                 floorRatio = comb[i] // lim
-#                 rem = comb[i] - (floorRatio * lim)
-#                 fac = lim
-#                 for pr in prob_terms:
-#                     fac *= pr
-#                     rem *= pr
-#                 s += floorRatio * fac
-#                 s += rem
-#             else:
-#                 rem = comb[i]
-#                 for pr in prob_terms:
-#                     rem *= pr
-#                 s += rem
-#         f.append(s)
-#     return f
-# 
-# def n_choose_k(n, k):
-#     
-#     k = min(k, n-k)
-#     if k == 0:
-#         return 1
-#     return ( factorial(n) // factorial(k) ) // factorial(n - k)
+def sample_random_pairs (ls, sampleSize):
+    
+    sample1 = choices(ls, k = sampleSize)
+    sample2 = choices(ls, k = sampleSize)
+    return list(zip(sample1, sample2))

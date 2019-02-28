@@ -24,14 +24,14 @@ def main():
     interactome_name = 'IntAct'
     
     # tissue expression database name. Options: 'Illumina', 'GTEx', 'HPA', 'Fantom5'
-    expr_db = 'Fantom5'
+    expr_db = 'HPA'
     
     # minimum number of tissue expression values required for protein pair tissue
     # co-expression to be considered
     coexprMinTissues = 5
     
     # number of random interactions
-    numRandomPairs = 10000
+    numRandPairs = 10000
     
     # show figures
     showFigs = False
@@ -124,32 +124,25 @@ def main():
         expr = pickle.load(f)
     
     if expr_db is 'HPA':
+        exprMap = {'Not detected':0, 'Low':1, 'Medium':2, 'High':3}
         for k, v in expr.items():
             for i, e in enumerate(v):
-                if e in ('High', 'Medium'):
-                    v[i] = 1
-                elif e in ('Low', 'Not detected'):
-                    v[i] = 0
-                else:
-                    v[i] = np.nan
+                v[i] = exprMap[e] if e in exprMap else np.nan
             expr[k] = np.array(v)
-        coexpr_method = 'hamming_dist'
-    else:
-        coexpr_method = 'pearson_corr'
     
     #-----------------------------------------------------------------------------------------
     # Calculate tissue co-expression for random interactions
     #-----------------------------------------------------------------------------------------
     
     proteins = list(set(interactome[["Protein_1", "Protein_2"]].values.flatten()))
-    randomPairs = pd.DataFrame()
-    randomPairs["Protein_1"], randomPairs["Protein_2"] = zip(* sample_random_pairs (proteins, numRandomPairs))    
-    randomPairs["coexpr"] = randomPairs.apply(lambda x: coexpr (x["Protein_1"],
-                                                                x["Protein_2"],
-                                                                expr,
-                                                                minTissues = coexprMinTissues,
-                                                                method = coexpr_method), axis=1)
-    randomPairs = randomPairs [np.isnan(randomPairs["coexpr"]) == False].reset_index(drop=True)
+    randPairs = pd.DataFrame()
+    randPairs["Protein_1"], randPairs["Protein_2"] = zip(* sample_random_pairs (proteins, numRandPairs))    
+    randPairs = randPairs [randPairs["Protein_1"] != randPairs["Protein_2"]]
+    randPairs["coexpr"] = randPairs.apply(lambda x: coexpr (x["Protein_1"],
+                                                            x["Protein_2"],
+                                                            expr,
+                                                            minTissues = coexprMinTissues), axis=1)
+    randPairs = randPairs [np.isnan(randPairs["coexpr"]) == False].reset_index(drop=True)
     
     #-----------------------------------------------------------------------------------------
     # Calculate tissue co-expression for all interaction partners in the reference interactome
@@ -161,8 +154,7 @@ def main():
     refPPIs["coexpr"] = refPPIs.apply(lambda x: coexpr (x["Protein_1"],
                                                         x["Protein_2"],
                                                         expr,
-                                                        minTissues = coexprMinTissues,
-                                                        method = coexpr_method), axis=1)
+                                                        minTissues = coexprMinTissues), axis=1)
     refPPIs = refPPIs [np.isnan(refPPIs["coexpr"]) == False].reset_index(drop=True)
     
     #------------------------------------------------------------------------------------------
@@ -175,8 +167,7 @@ def main():
     strucPPIs["coexpr"] = strucPPIs.apply(lambda x: coexpr (x["Protein_1"],
                                                             x["Protein_2"],
                                                             expr,
-                                                            minTissues = coexprMinTissues,
-                                                            method = coexpr_method), axis=1)
+                                                            minTissues = coexprMinTissues), axis=1)
     strucPPIs = strucPPIs [np.isnan(strucPPIs["coexpr"]) == False].reset_index(drop=True)
     
     #-------------------------------------------------------------------------------------
@@ -186,7 +177,7 @@ def main():
     allcoexpr = {k:coexpr for k, coexpr in zip(['Random interactions',
                                                 'Reference interactome',
                                                 'Structural interactome'],
-                                               [randomPairs, refPPIs, strucPPIs])}
+                                               [randPairs, refPPIs, strucPPIs])}
     with open(coexprFile, 'wb') as fout:
         pickle.dump(allcoexpr, fout)
     
@@ -196,7 +187,7 @@ def main():
     #------------------------------------------------------------------------------------
     
     # remove NaN values
-    randCoexpr = randomPairs["coexpr"].tolist()
+    randCoexpr = randPairs["coexpr"].tolist()
     refCoexpr = refPPIs["coexpr"].tolist()
     strucCoexpr = strucPPIs["coexpr"].tolist()
     

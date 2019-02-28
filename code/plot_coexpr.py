@@ -15,7 +15,7 @@ def main():
     expr_db = ['Illumina', 'GTEx', 'HPA', 'Fantom5']
     
     # reference interactome name
-    ref_interactome_name = 'IntAct'
+    ref_interactome_name = 'HI-II-14'
     
     # interactome names
     interactome_names = ['Random interactions', 'Reference interactome', 'Structural interactome']

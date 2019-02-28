@@ -285,9 +285,9 @@ def multi_bar_plot (data,
     ph.spines['bottom'].set_position('zero')
     for item in ([ph.xaxis.label, ph.yaxis.label] + ph.get_xticklabels() + ph.get_yticklabels()):
         item.set_fontsize(fontsize)
-    if leg is not None:
-        ph.legend(bbox_to_anchor = (0.5,1.02), loc = 'lower center', ncol=2, frameon=False)
-        #ph.legend(bbox_to_anchor = (2,0), loc = 'lower center', ncol=2, frameon=False)
+    ph.legend()
+#     if leg is not None:
+#         ph.legend(bbox_to_anchor = (0.5,1.02), loc = 'lower center', ncol=2, frameon=False)
     if (figdir is not None) and (figname is not None):
         figdir_eps = figdir / 'eps_figures'
         figdir_pdf = figdir / 'pdf_figures'

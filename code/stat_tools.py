@@ -108,7 +108,10 @@ def sderror (s):
     Returns:
         float: standard error of the mean.
     """
-    return np.std(s) / np.sqrt(len(s))
+    if len(s):
+        return np.std(s) / np.sqrt(len(s))
+    else:
+        return np.nan
 
 def sderror_on_fraction (k, n):
     """Calculate standard error on a fraction.

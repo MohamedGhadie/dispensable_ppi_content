@@ -3,6 +3,7 @@ import io
 import pickle
 import pandas as pd
 import numpy as np
+import warnings
 from scipy.stats.stats import pearsonr
 from simple_tools import valid_uniprot_id, is_numeric, hamming_dist
 
@@ -75,17 +76,17 @@ def coexpr (p1, p2, expr, minTissues = 3, method = 'pearson_corr'):
     
     """
     if (p1 in expr) and (p2 in expr):
-        e1 = expr[p1]
-        e2 = expr[p2]
-        not_nan = (np.isnan(e1) | np.isnan(e2)) == False
+        e1, e2 = expr[p1], expr[p2]
+        not_nan = (np.isnan(e1) == False) & (np.isnan(e2) == False)
         numTissues = sum(not_nan)
         if numTissues >= minTissues:
+            e1, e2 = e1[not_nan], e2[not_nan]
             if method is 'pearson_corr':
-                corr, p = pearsonr(e1[not_nan], e2[not_nan])
-                return corr
+                if (len(set(e1)) > 1) and (len(set(e2)) > 1):
+                    corr, p = pearsonr(e1, e2)
+                    return corr
             elif method is 'hamming_dist':
-                dist = hamming_dist (e1[not_nan], e2[not_nan])
-                return 1 - dist / numTissues
+                return 1 - hamming_dist (e1, e2) / numTissues
     return np.nan
 
 def produce_protein_go_dictionaries (inPath,
@@ -377,9 +378,6 @@ def produce_fantom5_expr_dict (inPath,
             line = f.readline()
         k = 0
         while True:
-            k += 1
-            if k % 1000 == 0:
-                print(k)
             if line is '':
                 break
             linesplit = list(map(str.strip, line.strip().split('\t')))

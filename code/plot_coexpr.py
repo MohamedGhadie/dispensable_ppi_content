@@ -12,7 +12,7 @@ from plot_tools import multi_bar_plot
 def main():
     
     # tissue expression databases
-    expr_db = ['Illumina', 'GTEx', 'HPA']
+    expr_db = ['Illumina', 'GTEx', 'HPA', 'Fantom5']
     
     # reference interactome name
     ref_interactome_name = 'IntAct'
@@ -61,7 +61,7 @@ def main():
                    colors = interactome_colors,
                    edgecolor = 'k',
                    barwidth = 0.2,
-                   fontsize = 24,
+                   fontsize = 20,
                    leg = interactome_names,
                    show = showFigs,
                    figdir = figDir,

@@ -13,6 +13,7 @@ from interactome_tools import read_single_interface_annotated_interactome
 from protein_function import (produce_illumina_expr_dict,
                               produce_gtex_expr_dict,
                               produce_hpa_expr_dict,
+                              produce_fantom5_expr_dict,
                               coexpr)
 from stat_tools import bootstrap_test, sderror
 from plot_tools import bar_plot
@@ -22,8 +23,8 @@ def main():
     # reference interactome name. Options: 'HI-II-14' or 'IntAct'
     interactome_name = 'IntAct'
     
-    # tissue expression database name. Options: 'Illumina', 'GTEx', 'HPA'
-    expr_db = 'HPA'
+    # tissue expression database name. Options: 'Illumina', 'GTEx', 'HPA', 'Fantom5'
+    expr_db = 'Fantom5'
     
     # minimum number of tissue expression values required for protein pair tissue
     # co-expression to be considered
@@ -65,8 +66,10 @@ def main():
     illuminaExprFile = extDir / 'E-MTAB-513.tsv.txt'
     gtexDir = extDir / 'GTEx_Analysis_v7_eQTL_expression_matrices'
     hpaExprFile = extDir / 'normal_tissue.tsv'
-    UniprotIDmapFile = inDir / 'to_human_uniprotID_map.pkl'
-    UniqueGeneSwissProtIDFile = inDir / 'uniprot_unique_gene_reviewed_human_proteome.list'
+    fantomExprFile = extDir / 'hg38_fair+new_CAGE_peaks_phase1and2_tpm_ann.osc.txt'
+    fantomSampleTypeFile = extDir / 'fantom5_sample_type.xlsx'
+    uniprotIDmapFile = inDir / 'to_human_uniprotID_map.pkl'
+    uniqueGeneSwissProtIDFile = inDir / 'uniprot_unique_gene_reviewed_human_proteome.list'
     interactomeFile = interactomeDir / 'human_interactome.txt'
     structuralInteractomeFile = interactomeDir / 'human_interface_annotated_interactome.txt'
     
@@ -97,18 +100,25 @@ def main():
         print('\n' + 'producing protein tissue expression dictionary')
         if expr_db is 'Illumina':
             produce_illumina_expr_dict (illuminaExprFile,
-                                        UniprotIDmapFile,
+                                        uniprotIDmapFile,
                                         proteinExprFile,
                                         headers = list(range(1, 18)))
         elif expr_db is 'GTEx':
             produce_gtex_expr_dict (gtexDir,
-                                    UniprotIDmapFile,
+                                    uniprotIDmapFile,
                                     proteinExprFile,
-                                    uniprotIDlistFile = UniqueGeneSwissProtIDFile)
+                                    uniprotIDlistFile = uniqueGeneSwissProtIDFile)
         elif expr_db is 'HPA':
             produce_hpa_expr_dict (hpaExprFile,
-                                   UniprotIDmapFile,
+                                   uniprotIDmapFile,
                                    proteinExprFile)
+        elif expr_db is 'Fantom5':
+            produce_fantom5_expr_dict (fantomExprFile,
+                                       uniprotIDmapFile,
+                                       proteinExprFile,
+                                       sampleTypes = 'tissues',
+                                       sampleTypeFile = fantomSampleTypeFile,
+                                       uniprotIDlistFile = uniqueGeneSwissProtIDFile)
     
     with open(proteinExprFile, 'rb') as f:
         expr = pickle.load(f)

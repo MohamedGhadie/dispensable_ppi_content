@@ -244,20 +244,6 @@ def produce_gtex_expr_dict (inDir, uniprotIDmapFile, outPath, uniprotIDlistFile 
         print('processing file %d of %d: %s' % (i + 1, len(filenames), filename))
         expr, processed, skipped = {}, 0, 0
         inPath = inDir / filename
-#         matrix = pd.read_table(inPath, sep='\t')
-#         matrix["uniprot_id"] = matrix["gene_id"].apply(lambda x: uniprotID[x] if x in uniprotID else '-')
-#         matrix = matrix [matrix["uniprot_id"] != '-']
-#         matrix["avg_expr"] = matrix[matrix.columns[4:]].mean(axis=1)
-#         expr = {id:e for id, e in matrix[["uniprot_id", "avg_expr"]].values}
-#         with io.open(inPath, "r") as f:
-#             next(f)
-#             expr = {}
-#             for line in f:
-#                 linesplit = list(map(str.strip, line.split('\t')))
-#                 chr, start, end, gene_id = linesplit[:4]
-#                 id = uniprotID[gene_id] if gene_id in uniprotID else gene_id
-#                 expression = np.array([float(e) for e in linesplit[4:] if is_numeric(e)])
-#                 expr[id] = np.mean(expression[np.isnan(expression)==False])
         with io.open(inPath, "r") as f:
             next(f)
             while True:
@@ -270,9 +256,9 @@ def produce_gtex_expr_dict (inDir, uniprotIDmapFile, outPath, uniprotIDlistFile 
                     if len(linesplit) > 4:
                         chr, start, end, gene_id = linesplit[:4]
                         gene_id = gene_id.split('.')[0]
-                        id = uniprotID[gene_id] if gene_id in uniprotID else gene_id
-                        expression = np.array([float(e) for e in linesplit[4:] if is_numeric(e)])
-                        expr[id] = np.mean(expression[np.isnan(expression)==False])
+                        if gene_id in uniprotID:
+                            id = uniprotID[gene_id]
+                            expr[id] = np.nanmean([float(e) for e in linesplit[4:] if is_numeric(e)])
                 except:
                     skipped += 1
                     pass
@@ -323,3 +309,94 @@ def produce_hpa_expr_dict (inPath, uniprotIDmapFile, outPath):
         
     with open(outPath, 'wb') as fOut:
         pickle.dump(expr_vectors, fOut)
+
+def produce_fantom5_expr_dict (inPath,
+                               uniprotIDmapFile,
+                               outPath,
+                               sampleTypes = None,
+                               sampleTypeFile = None,
+                               uniprotIDlistFile = None):
+    """Make a dictionary of protein tissue expression.
+
+    Args:
+        inDir (str): directory of gene tissue expression data files.
+        uniprotIDmapFile (Path): file directory containing dict of mappings to UniProt IDs.
+        outPath (str): file directory to save output dict to.
+
+    """
+    with open(uniprotIDmapFile, 'rb') as f:
+        uniprotID = pickle.load(f)
+    if uniprotIDlistFile:
+        with open(uniprotIDlistFile, 'r') as f:
+            uniprotIDlist = list(set(f.read().split()))
+    else:
+        uniprotIDlist = list(uniprotID.values())
+    
+    if sampleTypes:
+        sampleCategory = pd.read_excel(sampleTypeFile)
+        if isinstance(sampleTypes, str):
+            sampleTypes = [sampleTypes]
+        selcols = sampleCategory.loc[sampleCategory["Sample category"].apply(lambda x: x in sampleTypes), "FF ontology id"]
+        selcols = list(set(selcols.values))
+    else:
+        selcols = None
+    
+    with io.open(inPath, "r") as f:
+        while True:
+            line = f.readline()
+            if line.startswith('##ParemeterValue[genome_assembly]='):
+                geneAssembly = line.strip().split('=')[1]
+                break
+    print(selcols)
+    
+    with io.open(inPath, "r") as f:
+        i, hgncIndex, tpmIndex, tissues = -1, -1, [], []
+        while True:
+            line = f.readline()
+            if (line == '') or (line[:2] != '##'):
+                break
+            i += line.startswith('##ColumnVariables')
+            if line.startswith('##ColumnVariables[tpm'):
+                if selcols:
+                    for col in selcols:
+                        if '.%s.%s' % (col, geneAssembly) in line:
+                            print(line)
+                            tpmIndex.append(i)
+                            tissues.append(col)
+                            break
+                else:
+                    tpmIndex.append(i)
+                    tissues.append(line.strip()[22:].split(']', maxsplit=1)[0])
+            elif line.startswith('##ColumnVariables[hgnc_id]'):
+                hgncIndex = i
+    print('Columns selected: %s' % tissues)
+    
+    with io.open(inPath, "r") as f:
+        expr, line = {}, '##'
+        while line.startswith('##'):
+            line = f.readline()
+        k = 0
+        while True:
+            k += 1
+            if k % 1000 == 0:
+                print(k)
+            if line is '':
+                break
+            linesplit = list(map(str.strip, line.strip().split('\t')))
+            if len(linesplit) > 7:
+                hgncID = linesplit[hgncIndex]
+                if hgncID in uniprotID:
+                    id = uniprotID[hgncID]
+                    if id in uniprotIDlist:
+                        tpms = [tpm for i, tpm in enumerate(linesplit) if i in tpmIndex]
+                        tpms = list(map(float, tpms))
+                        if id in expr:
+                            expr[id].append(tpms)
+                        else:
+                            expr[id] = [tpms]
+            line = f.readline()
+    
+    for k, v in expr.items():
+        expr[k] = np.nanmean(v, axis=0)
+    with open(outPath, 'wb') as fOut:
+        pickle.dump(expr, fOut)

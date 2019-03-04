@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------------------------
-# This script compares functional similarity of interaction partners between the reference 
-# interactome and the structural interactome.
+# This script compares tissue coexpression of interaction partners between the structural 
+# interactome, the reference interactome and random interactions.
 #----------------------------------------------------------------------------------------
 
 import os
@@ -20,10 +20,12 @@ from plot_tools import bar_plot
 
 def main():
     
-    # reference interactome name. Options: 'HI-II-14' or 'IntAct'
+    # reference interactome name
+    # options: HI-II-14, IntAct
     interactome_name = 'IntAct'
     
-    # tissue expression database name. Options: 'Illumina', 'GTEx', 'HPA', 'Fantom5'
+    # tissue expression database name
+    # options: Illumina, GTEx, HPA, Fantom5
     expr_db = 'HPA'
     
     # minimum number of tissue expression values required for protein pair tissue
@@ -33,10 +35,13 @@ def main():
     # number of random interactions
     numRandPairs = 10000
     
+    # interactome colors
+    interactome_colors = ['limegreen', 'steelblue', 'orangered']
+    
     # show figures
     showFigs = False
     
-    # directory of processed data files shared by all interactomes
+    # parent directory of all data files
     dataDir = Path('../data')
     
     # directory of data files from external sources
@@ -92,7 +97,7 @@ def main():
     print( '%d proteins' % len( set(structuralInteractome[["Protein_1", "Protein_2"]].values.flatten()) ) )
     
     #------------------------------------------------------------------------------------
-    # Produce GO and tissue expression dictionaries
+    # Produce tissue expression dictionary
     #------------------------------------------------------------------------------------
     
     # produce protein tissue expression profiles
@@ -174,10 +179,8 @@ def main():
     # Save tissue co-expression results to file
     #-------------------------------------------------------------------------------------
     
-    allcoexpr = {k:coexpr for k, coexpr in zip(['Random interactions',
-                                                'Reference interactome',
-                                                'Structural interactome'],
-                                               [randPairs, refPPIs, strucPPIs])}
+    allcoexpr = {k:c for k, c in zip(['Random interactions', 'Reference interactome', 'Structural interactome'],
+                                     [randPairs, refPPIs, strucPPIs])}
     with open(coexprFile, 'wb') as fout:
         pickle.dump(allcoexpr, fout)
     
@@ -212,8 +215,8 @@ def main():
     bar_plot([ np.mean(randCoexpr), np.mean(refCoexpr), np.mean(strucCoexpr) ],
              [ sderror(randCoexpr), sderror(refCoexpr), sderror(strucCoexpr) ],
              xlabels = ['Random\ninteractions', 'Reference\ninteractome', 'Structural\ninteractome'],
-             ylabel = 'Tissue co-expression of\ninteracting protein pairs',
-             colors = ['green', 'blue', 'red'],
+             ylabel = 'Tissue co-expression of\ninteraction partners',
+             colors = interactome_colors,
              edgecolor = 'k',
              barwidth = 0.5,
              fontsize = 24,

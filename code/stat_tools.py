@@ -1,7 +1,8 @@
 import time
 import numpy as np
 import scipy.stats as stats
-from plot_tools import curve_plot
+from itertools import compress
+from collections import Counter
 
 def fisher_test(row1, row2):
     """Calculate statistical significance for a contingency table using Fisher's exact
@@ -57,15 +58,18 @@ def bootstrap_test(sample1, sample2, iter = 10000):
     
     """
     n1, n2, k = len(sample1), len(sample2), 0
-    diff = np.abs(np.mean(sample1) - np.mean(sample2))
-    sample1 = sample1 - np.mean(sample1)
-    sample2 = sample2 - np.mean(sample2)
-    for j in range(iter):
-        randSample1 = np.random.choice(sample1, size=n1, replace=True)
-        randSample2 = np.random.choice(sample2, size=n2, replace=True)
-        if diff <= np.abs(np.mean(randSample1) - np.mean(randSample2)):
-            k += 1
-    print("bootstrap-test, p-value = %g (%d iterations)" % (k / iter, iter))
+    if n1 and n2:
+        diff = np.abs(np.mean(sample1) - np.mean(sample2))
+        sample1 = sample1 - np.mean(sample1)
+        sample2 = sample2 - np.mean(sample2)
+        for j in range(iter):
+            randSample1 = np.random.choice(sample1, size=n1, replace=True)
+            randSample2 = np.random.choice(sample2, size=n2, replace=True)
+            if diff <= np.abs(np.mean(randSample1) - np.mean(randSample2)):
+                k += 1
+        print("bootstrap-test, p-value = %g (%d iterations)" % (k / iter, iter))
+    else:
+        print("bootstrap-test, p-value = NaN (empty sample)")
 
 def normality_test (sample, alpha):
     """Check if a data sample has a normal distribution.
@@ -75,12 +79,15 @@ def normality_test (sample, alpha):
         alpha (float): cutoff for reporting significant p-value.
     
     """
-    _, pvalue = stats.mstats.normaltest(sample)
-    print("Normality test, p-value = %g" %pvalue)
-    if pvalue > alpha:
-        print("Distribution is normal")
+    if len(sample) > 7:
+        _, pvalue = stats.mstats.normaltest(sample)
+        print("Normality test, p-value = %g" % pvalue)
+        if pvalue > alpha:
+            print("Distribution is normal")
+        else:
+            print("Diftribution is not normal")
     else:
-        print("Diftribution is not normal")
+        print("Normality test not possible: sample size smaller than 8")
 
 def equal_variance_test (sample1, sample2, alpha):
     """Check if two data samples have no statistically significant difference in their
@@ -108,8 +115,9 @@ def sderror (s):
     Returns:
         float: standard error of the mean.
     """
-    if len(s):
-        return np.std(s) / np.sqrt(len(s))
+    l = len(s)
+    if l:
+        return np.std(s) / np.sqrt(l)
     else:
         return np.nan
 
@@ -126,6 +134,23 @@ def sderror_on_fraction (k, n):
     p = k / n
     return np.sqrt(p * (1 - p) / n)
 
+def proportion_CI (k, n, conf = 95.0):
+    
+    mult = { 90.0 : 1.645,
+             95.0 : 1.960,
+             97.5 : 2.240,
+             99.0 : 2.576,
+             99.9 : 3.291 }
+    if k > 0 and n > 0 and conf in mult:
+        se = sderror_on_fraction (k, n)
+        p = k / n
+        logSE = np.sqrt((1 / k) - (1 / n))
+        lowerlog = np.log(p) - mult[conf] * logSE
+        upperlog = np.log(p) + mult[conf] * logSE
+        return np.exp(lowerlog), np.exp(upperlog)
+    else:
+        return np.nan, np.nan
+
 def proportion_ratio_CI (k1, n1, k2, n2, a=1, b=0, c=1, d=0, conf = 95.0):
     
     mult = { 90.0 : 1.645,
@@ -140,6 +165,27 @@ def proportion_ratio_CI (k1, n1, k2, n2, a=1, b=0, c=1, d=0, conf = 95.0):
         SElogR = np.sqrt(var1 + var2)
         lowerlog = np.log(r) - mult[conf] * SElogR
         upperlog = np.log(r) + mult[conf] * SElogR
+        return np.exp(lowerlog), np.exp(upperlog)
+    else:
+        return np.nan, np.nan
+
+def proportion_sum_CI (k1, n1, k2, n2, a=1, b=1, conf = 95.0):
+    
+    mult = { 90.0 : 1.645,
+             95.0 : 1.960,
+             97.5 : 2.240,
+             99.0 : 2.576,
+             99.9 : 3.291 }
+    if k1 > 0 and n1 > 0 and k2 > 0 and n2 > 0 and conf in mult:
+        p1 = k1 / n1
+        p2 = k2 / n2
+        s = a*p1 + b*p2
+        term1 = a**2 * p1 * (1 - p1) / n1
+        term2 = b**2 * p2 * (1 - p2) / n2
+        term3 = a*p1 + b*p2
+        SElog = np.sqrt(term1 + term2) / term3
+        lowerlog = np.log(s) - mult[conf] * SElog
+        upperlog = np.log(s) + mult[conf] * SElog
         return np.exp(lowerlog), np.exp(upperlog)
     else:
         return np.nan, np.nan
@@ -180,22 +226,10 @@ def confidence_interval (n,
             break
         prev1 = bp1
         prev2 = bp2
-    prob1 = prob1[ : i1 + 1 ]
-    prob2 = prob2[ : i2 + 1 ]
+    prob1 = prob1[: i1 + 1]
+    prob2 = prob2[: i2 + 1]
     
-    for i, prob, (k_min, k_max) in zip( (i1, i2), (prob1, prob2), ((0, k_obs), (k_obs, n))):
-        curve_plot ([pvalues[ : i + 1 ]],
-                    [prob],
-                    styles = '-',
-                    xlabel = 'p',
-                    ylabel = 'P( %d <= observed %s <= %d )' % (k_min, eventname, k_max),
-                    show = showfig,
-                    figdir = figdir,
-                    figname = '_'.join([prefigname,
-                                        'n=%d' % n,
-                                        '%d<=k<=%d' % (k_min, k_max)]))
-    
-    lower_p, upper_p = sorted( ( pvalues[ i1 ], pvalues[ i2 ] )) 
+    lower_p, upper_p = sorted( ( pvalues[i1], pvalues[i2] )) 
     print('P(≤%d %s events) and P(≥%d %s events) among %d %s ' % (k_obs,
                                                                   eventname,
                                                                   k_obs,
@@ -277,3 +311,60 @@ def binomial_test_diff_in_fraction_product (n1,
         frac2 *= f
     p_value = sum( np.abs(frac1 - frac2) >= obs_diff ) / itr
     print("binomial sampling test, p-value = %g (%d iterations)" % (p_value, itr))
+
+def compress_data(xpos, ypos, xstart = 0, binwidth = 0.1, perbin = 0):
+    
+    xposmax = max(xpos)
+    xmin, xmax = xstart, xstart + binwidth
+    xmean, ymean, xerr, yerr, bins = [], [], [], [], []
+    while xmin < xposmax:
+        if xmin == xstart:
+            select = [ xmin <= x <= xmax for x in xpos ]
+        else:
+            select = [ xmin < x <= xmax for x in xpos ]
+        numpts = sum(select)
+        if (numpts == 0) and (perbin == 0):
+            xmin = xmax
+            xmax = xmin + binwidth
+        elif (numpts >= perbin) or (xmax >= xposmax):
+            xcompress = list( compress(xpos, select) )
+            ycompress = list( compress(ypos, select) )
+            bins.append( (xmin, xmax) )
+            xmean.append( np.mean( xcompress ) )
+            ymean.append( np.mean( ycompress ) )
+            xerr.append( sderror( xcompress ) )
+            yerr.append( sderror( ycompress ) )
+            xmin = xmax
+            xmax = xmin + binwidth
+        else:
+            xmax = xmax + binwidth
+    return xmean, ymean, xerr, yerr, bins
+
+def round_data (data, w = 1, maxVal = np.inf):
+    
+    rounded = []
+    for d in data:
+        if d <= maxVal - w/2:
+            rounded.append(w * round(float(d) / w))
+        else:
+            rounded.append(maxVal)
+    return rounded
+
+def pdf (data):
+    
+    dataCount = Counter(data)
+    x = sorted(dataCounter.keys())
+    dens = np.array( [dataCount[d] for d in x] )    
+    return dens/sum(dens), x
+
+def cont_pdf (data, minVal = None, maxVal = None, w = 1):
+    
+    dataCount = Counter(data)
+    k = dataCount.keys()
+    if minVal is None:
+        minVal = min(k)
+    if maxVal is None:
+        maxVal = max(k)
+    x = np.arange(minVal, maxVal + w, w)
+    dens = np.array( [dataCount[d] for d in x] )    
+    return dens/sum(dens), x

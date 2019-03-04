@@ -18,7 +18,6 @@ chainSeq = {}
 chainStrucResLabel = {}
 chainResOrder = {}
 resPosToID = {}
-numStruct = 0
 
 class ChainSelect( Select ):
     
@@ -333,7 +332,7 @@ def get_interface_by_chainIDs (inDir,
         list: binding residues of the first chain
 
     """
-    global structures, numStruct
+    global structures
     pdbID1, _ = chain_id1.split('_')
     pdbID2, _ = chain_id2.split('_')
     if pdbID1 == pdbID2:

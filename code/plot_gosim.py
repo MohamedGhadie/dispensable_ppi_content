@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------------------------
-# Plot tissue coexpression of interaction partners
+# Plot gene ontology (GO) similarity of interaction partners
 #----------------------------------------------------------------------------------------
 
 import os
@@ -11,11 +11,17 @@ from plot_tools import multi_bar_plot
 
 def main():
     
-    # tissue expression databases
-    expr_db = ['Illumina', 'GTEx', 'HPA', 'Fantom5']
-    
     # reference interactome name
     ref_interactome_name = 'IntAct'
+    
+    # similarity measure used to calculate GO similarity
+    sim_measure = 'Resnik'
+    
+    # root ontologies on which GO similarity was calculated
+    ont_root = ['biological_process', 'molecular_function', 'cellular_component']
+    
+    # root ontology labels used to label output files and figures
+    ont_abv = {'biological_process':'bp', 'molecular_function':'mf', 'cellular_component':'cc'}
     
     # interactome names
     interactome_names = ['Random interactions', 'Reference interactome', 'Structural interactome']
@@ -40,24 +46,24 @@ def main():
         os.makedirs(figDir)
     
     # input data files
-    coexprFiles = [interactomeDir / ('interactome_coexpr_%s.pkl' % db) for db in expr_db]
+    gosimFiles = [interactomeDir / ('allPPI_gosim_%s_%s.pkl' % (ont_abv[root], sim_measure)) for root in ont_root]
                          
-    allcoexpr = {}
-    for db, coexprFile in zip(expr_db, coexprFiles):
-        with open(coexprFile, 'rb') as f:
-            allcoexpr[db] = pickle.load(f)
+    allgosim = {}
+    for root, gosimFile in zip(ont_root, gosimFiles):
+        with open(gosimFile, 'rb') as f:
+            allgosim[root] = pickle.load(f)
     
     means, errors = [], []
     for interactome_name in interactome_names:
-        coexpr = [allcoexpr[db][interactome_name]["coexpr"] for db in expr_db]
-        means.append([np.mean(c) for c in coexpr])
-        errors.append([sderror(c) for c in coexpr])
+        gosim = [allgosim[root][interactome_name]["gosim"] for root in ont_root]
+        means.append([np.mean(s) for s in gosim])
+        errors.append([sderror(s) for s in gosim])
     
     multi_bar_plot(means,
                    errors = errors,
-                   xlabels = expr_db,
-                   ylabel = 'Tissue co-expression of\ninteraction partners',
-                   ylabels = [round(x, 1) for x in np.arange(0, 0.9, 0.2)],
+                   xlabels = [r.replace('_','\n') for r in ont_root],
+                   ylabel = 'Gene ontology similarity\nof interaction partners',
+                   ylabels = [round(x, 1) for x in np.arange(0, 6, 1)],
                    colors = interactome_colors,
                    #edgecolor = 'k',
                    barwidth = 0.2,
@@ -66,7 +72,7 @@ def main():
                    leg = interactome_names,
                    show = showFigs,
                    figdir = figDir,
-                   figname = 'interactome_coexpr')
+                   figname = 'interactome_gosim_%s' % sim_measure)
     
 if __name__ == '__main__':
     main()

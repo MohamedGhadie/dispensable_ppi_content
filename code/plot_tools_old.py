@@ -1,5 +1,3 @@
-#import matplotlib
-#matplotlib.use('Agg')
 import os
 import numpy as np
 import networkx as nx
@@ -7,10 +5,9 @@ from networkx.drawing.nx_agraph import graphviz_layout
 from matplotlib import pyplot as plt
 from matplotlib_venn import venn2, venn3
 from matplotlib.ticker import MultipleLocator
-from stat_tools import compress_data
 
 def bar_plot (data,
-              error = None,
+              error,
               xlabels = None,
               ylabels = None,
               xlabel = None,
@@ -24,14 +21,13 @@ def bar_plot (data,
               edgecolor = 'none',
               ecolors = 'k',
               fontsize = 12,
-              opacity = None,
               xlim = None,
               ylim = None,
-              xticks = None,
               yMinorTicks = False,
               adjustBottom = False,
               shiftBottomAxis = None,
               xbounds = None,
+              leg = None,
               show = True,
               figdir = None,
               figname = None):
@@ -68,19 +64,29 @@ def bar_plot (data,
     plt_fig = plt.figure()
     ph = plt_fig.add_subplot(111)
     
+    if adjustBottom:
+        plt_fig.subplots_adjust(bottom = adjustBottom)
+    if shiftBottomAxis is not None:
+        ph.spines["bottom"].set_position(("axes", shiftBottomAxis))
+    if xbounds is not None:
+        ph.spines['bottom'].set_bounds(xbounds[0], xbounds[1])
+    if xlim is not None:
+        ph.set_xlim(xlim)
+    if ylim is not None:
+        ph.set_ylim(ylim)
+    
     numBars = len(data)
     if isinstance(colors, list):
         if len(colors) < numBars:
             colors.extend(['b'] * (numBars - len(colors)))
-    ind = list(np.arange(1, numBars + 1))
+    ind = np.array(range(numBars)) + 1
     ph.bar(ind,
            data,
            barwidth,
            color = colors,
-           alpha = opacity,
            edgecolor = edgecolor)
     
-    if error:
+    if len(error) > 0:
         if len(error) < numBars:
             error.extend([0] * (numBars - len(error)))
         if isinstance(ecolors, str):
@@ -100,37 +106,62 @@ def bar_plot (data,
                         capthick = ewidth,
                         ecolor = ecolor)
     
-    if not xticks:
-        xticks = ind
-    adjust_axis (plt_fig,
-                 ph,
-                 xlabels = xlabels,
-                 ylabels = ylabels,
-                 xlabel = xlabel,
-                 ylabel = ylabel,
-                 fontsize = fontsize,
-                 xlim = xlim,
-                 ylim = ylim,
-                 xind = xticks,
-                 yMinorTicks = yMinorTicks,
-                 adjustBottom = adjustBottom,
-                 shiftBottomAxis = shiftBottomAxis,
-                 xbounds = xbounds)
-    
-    if figdir and figname:
-        save_figure (figdir, figname)
-    show_figure (plt_fig, show)
-    return plt_fig, ph
+    ph.tick_params('both', length=10, which='major')
+    ph.tick_params('both', length=5, which='minor')
+    ph.get_xaxis().set_tick_params(which='both', bottom=False, top=False, labelbottom=False)
+    if xlabels is not None:
+        ph.set_xticks(ind)
+        ph.xaxis.set_ticks_position('bottom')
+        ph.get_xaxis().set_tick_params(which='both', direction='out')
+        ph.set_xticklabels(xlabels)
+    if xlabel is not None:
+        ph.set_xlabel(xlabel)
+    ph.get_yaxis().set_tick_params(which='both', right=False, direction='out')
+    ph.yaxis.set_ticks_position('left')
+    if ylabels is not None:
+        ph.set_yticks(ylabels)
+        if all(n % 1 == 0 for n in ylabels):
+            ylabels = [int(n) for n in ylabels]
+        ph.set_yticklabels(ylabels)
+    if yMinorTicks:
+        yticks = ph.get_yticks(minor=False)
+        minorLocator = MultipleLocator( (yticks[1] - yticks[0]) / 5)
+        ph.yaxis.set_minor_locator(minorLocator)
+    if ylabel is not None:
+        ph.set_ylabel(ylabel)
+    ph.spines["top"].set_visible(False)
+    ph.spines['right'].set_visible(False)
+    ph.spines['bottom'].set_position('zero')
+    for item in ([ph.xaxis.label, ph.yaxis.label] + ph.get_xticklabels() + ph.get_yticklabels()):
+        item.set_fontsize(fontsize)
+    if leg is not None:
+        ph.legend(leg, bbox_to_anchor = (0.5,1.02), loc = 'lower center', ncol=2, frameon=False)
+    if (figdir is not None) and (figname is not None):
+        figdir_eps = figdir / 'eps_figures'
+        figdir_pdf = figdir / 'pdf_figures'
+        figdir_png = figdir / 'png_figures'
+        if not figdir_eps.exists():
+            os.makedirs(figdir_eps)
+        if not figdir_pdf.exists():
+            os.makedirs(figdir_pdf)
+        if not figdir_png.exists():
+            os.makedirs(figdir_png)
+        plt.savefig(os.path.join(figdir_eps, figname+".eps"), bbox_inches='tight')
+        plt.savefig(os.path.join(figdir_pdf, figname+".pdf"), bbox_inches='tight')
+        plt.savefig(os.path.join(figdir_png, figname+".png"), bbox_inches='tight')
+    if show:
+        plt.show()
+    else:
+        plt.close(plt_fig)
 
 def multi_bar_plot (data,
-                    errors = None,
+                    errors,
                     xlabels = None,
                     ylabels = None,
                     xlabel = None,
                     ylabel = None,
                     colors = 'b',
                     barwidth = 0.3,
-                    bargap = 0,
                     capsize = 0,
                     fmt = 'none',
                     msize = 12,
@@ -138,15 +169,11 @@ def multi_bar_plot (data,
                     edgecolor = 'none',
                     ecolors = 'k',
                     fontsize = 12,
-                    opacity = None,
                     xlim = None,
                     ylim = None,
-                    xticks = None,
-                    bottomPos = None,
                     adjustBottom = False,
                     shiftBottomAxis = None,
                     xbounds = None,
-                    overlap = False,
                     leg = None,
                     show = True,
                     figdir = None,
@@ -183,12 +210,17 @@ def multi_bar_plot (data,
     plt_fig = plt.figure()
     ph = plt_fig.add_subplot(111)
     
+    if adjustBottom:
+        plt_fig.subplots_adjust(bottom = adjustBottom)
+    if shiftBottomAxis is not None:
+        ph.spines["bottom"].set_position(("axes", shiftBottomAxis))
+    if xbounds is not None:
+        ph.spines['bottom'].set_bounds(xbounds[0], xbounds[1])
+    
     numGroups = len(data)
-    if not errors:
-        errors = []
     if len(errors) < numGroups:
         errors.extend([[]] * (numGroups - len(errors)))
-    if not leg:
+    if leg is None:
         leg = ['Group ' + str(i+1) for i in range(numGroups)]
     if isinstance(colors, str):
         colors = [colors] * numGroups
@@ -198,22 +230,22 @@ def multi_bar_plot (data,
         ecolors = [ecolors] * numGroups
     elif len(ecolors) < numGroups:
         ecolors.extend(['k'] * (numGroups - len(ecolors)))
+    if xlim is not None:
+        ph.set_xlim(xlim)
+    if ylim is not None:
+        ph.set_ylim(ylim)
     
     for i, d, error, color, ecolor, label in zip(range(numGroups), data, errors, colors, ecolors, leg):
         numBars = len(d)
-        if overlap:
-            ind = list(np.arange(1, numBars + 1))
-        else:
-            ind = [k + i * (barwidth + bargap) for k in np.arange(1, numBars + 1)]
+        ind = np.array(range(numBars)) + (i * barwidth) + 1
         ph.bar(ind,
                d,
                barwidth,
-               alpha = opacity,
                color = color,
                edgecolor = edgecolor,
                label = label)
         
-        if error:
+        if len(error) > 0:
             if len(error) < numBars:
                 error.extend([0] * (numBars - len(error)))
             if isinstance(ecolor, str):
@@ -223,78 +255,80 @@ def multi_bar_plot (data,
             for pos, d, err, ecol in zip(ind, d, error, ecolor):
                 ph.errorbar(pos,
                             d,
-                            yerr = err,
+                            err,
                             elinewidth = ewidth,
                             fmt = fmt,
                             markersize = msize,
                             capsize = capsize,
                             capthick = ewidth,
                             ecolor = ecol)
+    
+    ind = np.array(range(numBars)) + ((numGroups - 1) * barwidth / 2.) + 1
+    ph.tick_params('both', length=10, which='major')
+    ph.get_xaxis().set_tick_params(which='both', bottom=False, top=False, labelbottom=False)
+    if xlabels is not None:
+        ph.set_xticks(ind)
+        ph.xaxis.set_ticks_position('bottom')
+        ph.get_xaxis().set_tick_params(which='both', direction='out')
+        ph.set_xticklabels(xlabels)
+    ph.get_yaxis().set_tick_params(which='both', right=False, direction='out')
+    ph.yaxis.set_ticks_position('left')
+    if ylabels is not None:
+        ph.set_yticks(ylabels)
+        ph.set_yticklabels(ylabels)
+    if xlabel is not None:
+        ph.set_xlabel(xlabel)
+    if ylabel is not None:
+        ph.set_ylabel(ylabel)
+    ph.spines["top"].set_visible(False)
+    ph.spines['right'].set_visible(False)
+    ph.spines['bottom'].set_position('zero')
+    for item in ([ph.xaxis.label, ph.yaxis.label] + ph.get_xticklabels() + ph.get_yticklabels()):
+        item.set_fontsize(fontsize)
     ph.legend()
-    if not xticks:
-        if overlap:
-            xticks = list(np.arange(1, numBars + 1))
-        else:
-            tickshift = (numGroups - 1) * 0.5 * (barwidth + bargap)
-            xticks = [k + tickshift for k in np.arange(1, numBars + 1)]
-    adjust_axis (plt_fig,
-                 ph,
-                 xlabels = xlabels,
-                 ylabels = ylabels,
-                 xlabel = xlabel,
-                 ylabel = ylabel,
-                 fontsize = fontsize,
-                 xlim = xlim,
-                 ylim = ylim,
-                 xind = xticks,
-                 bottomPos = bottomPos,
-                 adjustBottom = adjustBottom,
-                 shiftBottomAxis = shiftBottomAxis,
-                 xbounds = xbounds)
-       
-    if figdir and figname:
-        save_figure (figdir, figname)
-    show_figure (plt_fig, show)
+#     if leg is not None:
+#         ph.legend(bbox_to_anchor = (0.5,1.02), loc = 'lower center', ncol=2, frameon=False)
+    if (figdir is not None) and (figname is not None):
+        figdir_eps = figdir / 'eps_figures'
+        figdir_pdf = figdir / 'pdf_figures'
+        figdir_png = figdir / 'png_figures'
+        if not figdir_eps.exists():
+            os.makedirs(figdir_eps)
+        if not figdir_pdf.exists():
+            os.makedirs(figdir_pdf)
+        if not figdir_png.exists():
+            os.makedirs(figdir_png)
+        plt.savefig(os.path.join(figdir_eps, figname+".eps"), bbox_inches='tight')
+        plt.savefig(os.path.join(figdir_pdf, figname+".pdf"), bbox_inches='tight')
+        plt.savefig(os.path.join(figdir_png, figname+".png"), bbox_inches='tight')
+    if show:
+        plt.show()
+    else:
+        plt.close(plt_fig)
 
-def curve_plot (ydata,
-                xdata = None,
-                error = None,
-                xlim = None,
-                ylim = None,
+def curve_plot (xdata,
+                ydata,
+                xrange = None,
+                yrange = None,
                 styles = None,
-                fitstyles = None,
-                capsize = 10,
                 msize = 12,
-                mwidth = 0,
-                ewidth = 1,
-                ecolors = None,   
+                mwidth = 1,
                 xlabel = None,
                 ylabel = None,
-                xticks = None,
-                yticks = None,
                 xticklabels = None,
-                yticklabels = None,
                 fontsize = 12,
                 leg = None,
-                compress = False,
-                linefit = False,
-                xstart = 0,
-                binwidth = 0.1,
-                perbin = 0,
-                adjustBottom = False,
-                shiftBottomAxis = None,
-                xbounds = None,
                 show = True,
                 figdir = None,
                 figname = None):
-    """Plot multiple scatter plots.
+    """Plot multiple curves.
 
     Args:
         xdata (list): x-axis data points.
-        ydata (list): y-axis data points, list for each plot.
-        xlim (list): limits on x-axis.
-        ylim (list): limits on y-axis.
-        styles (list): plot style for each plot.
+        ydata (list): y-axis data points, list for each curve.
+        xrange (list): limits on x-axis.
+        yrange (list): limits on y-axis.
+        styles (list): plot style for each curve.
         msize (numeric): marker size.
         mwidth (numeric): marker edge width.
         xlabel (str): label for x-axis.
@@ -309,169 +343,53 @@ def curve_plot (ydata,
     """
     plt_fig = plt.figure()
     ph = plt_fig.add_subplot(111)
-    if not styles:
-        styles = ['b.'] * len(ydata)
-    if not fitstyles:
-        fitstyles = ['b'] * len(ydata)
-    if not ecolors:
-        ecolors = ['k'] * len(ydata)
-    if not xdata:
-        xdata = [ np.arange(1, len(y) + 1) for y in ydata ]
-    fitlim = []
-    if compress:
-        for xpos, ypos, style, ecolor in zip(xdata, ydata, styles, ecolors):
-            xmeans, ymeans, xerrors, yerrors, bins = compress_data(xpos,
-                                                                   ypos,
-                                                                   xstart = xstart,
-                                                                   binwidth = binwidth,
-                                                                   perbin = perbin)
-            xmid = [(xmax + xmin)/2 for xmin, xmax in bins]
-            ph.errorbar(xmid,
-                        ymeans,
-                        yerr = yerrors,
-                        elinewidth = ewidth,
-                        fmt = style,
-                        markersize = msize,
-                        capsize = capsize,
-                        capthick = ewidth,
-                        ecolor = ecolor,
-                        zorder = 10,
-                        clip_on = False)
-            fitlim.append( [ min(xmid), max(xmid) ] )
-    elif error:
-        for xpos, ypos, err, style, ecolor in zip(xdata, ydata, error, styles, ecolors):
-            ph.errorbar(xpos,
-                        ypos,
-                        yerr = err,
-                        elinewidth = ewidth,
-                        fmt = style,
-                        markersize = msize,
-                        capsize = capsize,
-                        capthick = ewidth,
-                        ecolor = ecolor,
-                        zorder = 10,
-                        clip_on = False)
-            fitlim.append( [ min(xpos), max(xpos) ] )
+    if styles is None:
+        styles = ['.'] * len(ydata)
+    for i, sample in enumerate(ydata):
+        if len(xdata) > 0:
+            ph.plot(xdata[i], sample, styles[i], markersize=msize, markeredgewidth=mwidth)
+        else:
+            ph.plot(sample, styles[i])
+    ph.spines["top"].set_visible(False)
+    ph.spines['right'].set_visible(False)
+    ph.xaxis.set_ticks_position('bottom')
+    ph.yaxis.set_ticks_position('left')
+    ph.get_xaxis().set_tick_params(which='both', direction='out')
+    ph.get_yaxis().set_tick_params(which='both', direction='out')
+    if xticklabels is not None:
+        ph.set_xticklabels(xticklabels)
+    if xrange is not None:
+        plt.xlim(xrange)
+    if yrange is not None:
+        plt.ylim(yrange)
+    if xlabel is not None:
+        plt.xlabel(xlabel)
+    if ylabel is not None:
+        plt.ylabel(ylabel)
+    if leg is not None:
+        plt.legend(leg)
+    for item in ([ph.xaxis.label, ph.yaxis.label] + ph.get_xticklabels() + ph.get_yticklabels()):
+        item.set_fontsize(fontsize)
+    if (figdir is not None) and (figname is not None):
+        figdir_eps = figdir / 'eps_figures'
+        figdir_pdf = figdir / 'pdf_figures'
+        figdir_png = figdir / 'png_figures'
+        if not figdir_eps.exists():
+            os.makedirs(figdir_eps)
+        if not figdir_pdf.exists():
+            os.makedirs(figdir_pdf)
+        if not figdir_png.exists():
+            os.makedirs(figdir_png)
+        plt.savefig(os.path.join(figdir_eps, figname+".eps"), bbox_inches='tight')
+        plt.savefig(os.path.join(figdir_pdf, figname+".pdf"), bbox_inches='tight')
+        plt.savefig(os.path.join(figdir_png, figname+".png"), bbox_inches='tight')
+    if show:
+        plt.show()
     else:
-        for xpos, ypos, style in zip(xdata, ydata, styles):
-            ph.plot(xpos,
-                    ypos,
-                    style,
-                    markersize = msize,
-                    markeredgewidth = mwidth,
-                    zorder = 10,
-                    clip_on = False)
-            fitlim.append( [ min(xpos), max(xpos) ] )
-    if linefit:
-        for xpos, ypos, style, xpts in zip(xdata, ydata, fitstyles, fitlim):
-            ypts = np.poly1d( np.polyfit(xpos, ypos, 1) ) (xpts)
-            #ypts = np.polyval( np.polyfit(xpos, ypos, 2), np.unique(xpos) )
-            ph.plot(xpts, ypts, style)
-    
-    if leg:
-        ph.legend(leg)
-    adjust_axis (plt_fig,
-                 ph,
-                 xlabels = xticklabels,
-                 ylabels = yticklabels,
-                 xlabel = xlabel,
-                 ylabel = ylabel,
-                 fontsize = fontsize,
-                 xlim = xlim,
-                 ylim = ylim,
-                 xind = xticks,
-                 yind = yticks,
-                 adjustBottom = adjustBottom,
-                 shiftBottomAxis = shiftBottomAxis,
-                 xbounds = xbounds)
-    if figdir and figname:
-        save_figure (figdir, figname)
-    show_figure (plt_fig, show)
-
-def scatter_plot (xdata,
-                  ydata,
-                  color = None,
-                  msize = None,
-                  ewidth = 1,
-                  style = None,
-                  cmap = None,
-                  norm = None,
-                  xlim = None,
-                  ylim = None,
-                  xlabel = None,
-                  ylabel = None,
-                  fontsize = 12,
-                  leg = None,
-                  barPos = None,
-                  orientation = 'vertical',
-                  barTicks = None,
-                  barLabels = None,
-                  showBar = True,
-                  show = True,
-                  figdir = None,
-                  figname = None):
-    """Plot multiple scatter plots.
-
-    Args:
-        xdata (list): x-axis data points.
-        ydata (list): y-axis data points, list for each plot.
-        xlim (list): limits on x-axis.
-        ylim (list): limits on y-axis.
-        style (list): plot style for each plot.
-        msize (numeric): marker size.
-        xlabel (str): label for x-axis.
-        ylabel (str): label for y-axis.
-        fontsize (numeric): font size for x and y tick labels and axis labels.
-        leg (list): label for each group.
-        show (boolean): True to show plot, otherwise plot is not shown.
-        figdir (str): directory to save figure in.
-        figname (str): name of file to save figure in.
-    
-    """
-    plt_fig = plt.figure()
-    ph = plt_fig.add_subplot(111)
-    if isinstance(xdata[0], list):
-        if not style:
-            style = [ None ] * len(ydata)
-        if not color:
-            color = [ None ] * len(ydata)
-        if msize is None:
-            msize = [ None ] * len(ydata)
-        for xpos, ypos, stl, col, sz in zip(xdata, ydata, style, color, msize):
-            sc = ph.scatter (xpos, ypos, s = sz, c = col, marker = stl, cmap = cmap,
-                        norm = norm, vmin = None, vmax = None, alpha = None,
-                        linewidths = ewidth, verts = None, edgecolors = None)
-    else:
-        sc = ph.scatter (xdata, ydata, s = msize, c = color, marker = style, cmap = cmap,
-                    norm = norm, vmin = None, vmax = None, alpha = None,
-                    linewidths = ewidth, verts = None, edgecolors = None)
-    if showBar:
-        barAxis = None
-        if barPos:
-            barAxis = plt_fig.add_axes(barPos)
-        cbar = plt.colorbar(sc,
-                            cax = barAxis,
-                            orientation = orientation,
-                            ticks = barTicks)
-        cbar.ax.tick_params(length = 0)
-        if barLabels:
-            cbar.ax.set_yticklabels(barLabels)
-    if leg:
-        ph.legend(leg)
-    adjust_axis (plt_fig,
-                 ph,
-                 xlabel = xlabel,
-                 ylabel = ylabel,
-                 fontsize = fontsize,
-                 xlim = xlim,
-                 ylim = ylim)
-    if figdir and figname:
-        save_figure (figdir, figname)
-    show_figure (plt_fig, show)
+        plt.close(plt_fig)
 
 def box_plot (data,
-              xlabels = None,
-              ylabels = None,
+              xlabels,
               xlabel = None,
               ylabel = None,
               fontsize = 12,
@@ -490,7 +408,6 @@ def box_plot (data,
     Args:
         data (list): data to plot, each group is a list.
         xlabels (list): label for each box on the x-axis.
-        ylabels (list): label for each box on the y-axis.
         xlabel (str): label for x-axis.
         ylabel (str): label for y-axis.
         fontsize (numeric): font size for x and y tick labels and axis labels.
@@ -516,37 +433,72 @@ def box_plot (data,
     elif len(colors) < numBoxes:
         colors.extend(['b'] * (numBoxs - len(colors)))
     
+    ## change outline color, fill color and linewidth of the boxes
     for box, color in zip(bp['boxes'], colors):
+        # change outline color
         box.set(color='black', linewidth=1)
+        # change fill color
         box.set(facecolor=color)
-    
+
+    ## change color and linewidth of the whiskers
     for whisker in bp['whiskers']:
         whisker.set(color='black', linestyle='-', linewidth=1)
 
+    ## change color and linewidth of the caps
     for cap in bp['caps']:
         cap.set(color='black', linewidth=1)
 
+    ## change color and linewidth of the medians
     for median in bp['medians']:
         median.set(color='black', linewidth=1)
 
+    ## change the style of fliers and their fill
     for flier in bp['fliers']:
         flier.set(marker='o', markerfacecolor = 'white', alpha=0.5)
     
-    adjust_axis (plt_fig,
-                 ph,
-                 xlabels = xlabels,
-                 ylabels = ylabels,
-                 xlabel = xlabel,
-                 ylabel = ylabel,
-                 fontsize = fontsize,
-                 xlim = xlim,
-                 ylim = ylim,
-                 adjustBottom = adjustBottom,
-                 shiftBottomAxis = shiftBottomAxis,
-                 xbounds = xbounds)
-    if figdir and figname:
-        save_figure (figdir, figname)
-    show_figure (plt_fig, show)
+    if adjustBottom:
+        plt_fig.subplots_adjust(bottom = adjustBottom)
+    if shiftBottomAxis is not None:
+        ph.spines["bottom"].set_position(("axes", shiftBottomAxis))
+    if xbounds is not None:
+        ph.spines['bottom'].set_bounds(xbounds[0], xbounds[1])
+    if ybounds is not None:
+        ph.spines['left'].set_bounds(ybounds[0], ybounds[1])
+    if xlim is not None:
+        ph.set_xlim(xlim)
+    if ylim is not None:
+        ph.set_ylim(ylim)
+    if xlabel is not None:
+        ph.set_xlabel(xlabel)
+    if ylabel is not None:
+        ph.set_ylabel(ylabel)
+    ph.tick_params('both', length=10, which='major')
+    ph.set_xticklabels(xlabels)
+    ph.get_xaxis().set_tick_params(which='both', direction='out')
+    ph.get_yaxis().set_tick_params(which='both', direction='out')
+    ph.spines["top"].set_visible(False)
+    ph.spines['right'].set_visible(False)
+    ph.xaxis.set_ticks_position('bottom')
+    ph.yaxis.set_ticks_position('left')
+    for item in ([ph.xaxis.label, ph.yaxis.label] + ph.get_xticklabels() + ph.get_yticklabels()):
+        item.set_fontsize(fontsize)
+    if (figdir is not None) and (figname is not None):
+        figdir_eps = figdir / 'eps_figures'
+        figdir_pdf = figdir / 'pdf_figures'
+        figdir_png = figdir / 'png_figures'
+        if not figdir_eps.exists():
+            os.makedirs(figdir_eps)
+        if not figdir_pdf.exists():
+            os.makedirs(figdir_pdf)
+        if not figdir_png.exists():
+            os.makedirs(figdir_png)
+        plt.savefig(os.path.join(figdir_eps, figname+".eps"), bbox_inches='tight')
+        plt.savefig(os.path.join(figdir_pdf, figname+".pdf"), bbox_inches='tight')
+        plt.savefig(os.path.join(figdir_png, figname+".png"), bbox_inches='tight')
+    if show:
+        plt.show()
+    else:
+        plt.close(plt_fig)
 
 def multi_histogram_plot (samples,
                           colors,
@@ -556,7 +508,7 @@ def multi_histogram_plot (samples,
                           edgecolor = 'none',
                           fontsize = 12,
                           bins = 10,
-                          alpha = 1,
+                          alpha = 0.5,
                           xlim = None,
                           ylim = None,
                           show = True,
@@ -585,27 +537,59 @@ def multi_histogram_plot (samples,
     """
     plt_fig = plt.figure()
     ph = plt_fig.add_subplot(111)
-    if isinstance(samples[0], list):
-        if not leg:
-            for sample, color in zip(samples, colors):
-                ph.hist(sample, color=color, bins=bins, alpha=alpha, edgecolor=edgecolor)
+    for i, sample in enumerate(samples):
+        if leg is None:
+            ph.hist(sample, color=colors[i], bins=bins, alpha=alpha, edgecolor=edgecolor)
         else:
-            for sample, color, label in zip(samples, colors, leg):
-                ph.hist(sample, color=color, bins=bins, alpha=alpha, label=label, edgecolor=edgecolor)
+            ph.hist(sample, color=colors[i], bins=bins, alpha=alpha, label=leg[i], edgecolor=edgecolor)
+    if xlabel is not None:
+        ph.set_xlabel(xlabel)
+    if ylabel is not None:
+        ph.set_ylabel(ylabel)
+    if leg is not None:
+        ph.legend(loc="upper right")
+    if xlim is not None:
+        ph.set_xlim(xlim)
+    if ylim is not None:
+        ph.set_ylim(ylim)
+    ph.tick_params('both', length=10, which='major')
+    ph.get_xaxis().set_tick_params(which='both', top=False, direction='out')
+#     if xlabels is not None:
+#         ph.set_xticks(ind)
+#         ph.xaxis.set_ticks_position('bottom')
+#         ph.get_xaxis().set_tick_params(which='both', direction='out')
+#         ph.set_xticklabels(xlabels)
+    ph.get_yaxis().set_tick_params(which='both', right=False, direction='out')
+    ph.yaxis.set_ticks_position('left')
+#     if ylabels is not None:
+#         ph.set_yticks(ylabels)
+#         ph.set_yticklabels(ylabels)
+    if xlabel is not None:
+        ph.set_xlabel(xlabel)
+    if ylabel is not None:
+        ph.set_ylabel(ylabel)
+    ph.spines["top"].set_visible(False)
+    ph.spines['right'].set_visible(False)
+    ph.spines['bottom'].set_position('zero')
+    for item in ([ph.xaxis.label, ph.yaxis.label] + ph.get_xticklabels() + ph.get_yticklabels()):
+        item.set_fontsize(fontsize)
+    if (figdir is not None) and (figname is not None):
+        figdir_eps = figdir / 'eps_figures'
+        figdir_pdf = figdir / 'pdf_figures'
+        figdir_png = figdir / 'png_figures'
+        if not figdir_eps.exists():
+            os.makedirs(figdir_eps)
+        if not figdir_pdf.exists():
+            os.makedirs(figdir_pdf)
+        if not figdir_png.exists():
+            os.makedirs(figdir_png)
+        plt.savefig(os.path.join(figdir_eps, figname+".eps"), bbox_inches='tight')
+        plt.savefig(os.path.join(figdir_pdf, figname+".pdf"), bbox_inches='tight')
+        plt.savefig(os.path.join(figdir_png, figname+".png"), bbox_inches='tight')
+    if show:
+        plt.show()
     else:
-        ph.hist(samples, color=colors, bins=bins, alpha=alpha, label=leg, edgecolor=edgecolor)
-    if leg:
-        ph.legend()
-    adjust_axis (plt_fig,
-                 ph,
-                 xlabel = xlabel,
-                 ylabel = ylabel,
-                 fontsize = fontsize,
-                 xlim = xlim,
-                 ylim = ylim)
-    if figdir and figname:
-        save_figure (figdir, figname)
-    show_figure (plt_fig, show)
+        plt.close(plt_fig)
 
 def heatmap_plot(mat,
                  cmap = 'Blues',
@@ -660,11 +644,25 @@ def heatmap_plot(mat,
                             orientation = orientation,
                             ticks = barTicks)
         cbar.ax.tick_params(length = 0)
-        if barLabels:
+        if barLabels is not None:
             cbar.ax.set_yticklabels(barLabels)
-    if figdir and figname:
-        save_figure (figdir, figname)
-    show_figure (plt_fig, show)
+    if (figdir is not None) and (figname is not None):
+        figdir_eps = figdir / 'eps_figures'
+        figdir_pdf = figdir / 'pdf_figures'
+        figdir_png = figdir / 'png_figures'
+        if not figdir_eps.exists():
+            os.makedirs(figdir_eps)
+        if not figdir_pdf.exists():
+            os.makedirs(figdir_pdf)
+        if not figdir_png.exists():
+            os.makedirs(figdir_png)
+        plt.savefig(os.path.join(figdir_eps, figname+".eps"), bbox_inches='tight')
+        plt.savefig(os.path.join(figdir_pdf, figname+".pdf"), bbox_inches='tight')
+        plt.savefig(os.path.join(figdir_png, figname+".png"), bbox_inches='tight')
+    if show:
+        plt.show()
+    else:
+        plt.close(plt_fig)
 
 def pie_plot (data,
               labels = None,
@@ -703,9 +701,23 @@ def pie_plot (data,
     ph.axis('equal')
     for w in pie_return[0]:
         w.set_linewidth(0)
-    if figdir and figname:
-        save_figure (figdir, figname)
-    show_figure (plt_fig, show)
+    if (figdir is not None) and (figname is not None):
+        figdir_eps = figdir / 'eps_figures'
+        figdir_pdf = figdir / 'pdf_figures'
+        figdir_png = figdir / 'png_figures'
+        if not figdir_eps.exists():
+            os.makedirs(figdir_eps)
+        if not figdir_pdf.exists():
+            os.makedirs(figdir_pdf)
+        if not figdir_png.exists():
+            os.makedirs(figdir_png)
+        plt.savefig(os.path.join(figdir_eps, figname+".eps"), bbox_inches='tight')
+        plt.savefig(os.path.join(figdir_pdf, figname+".pdf"), bbox_inches='tight')
+        plt.savefig(os.path.join(figdir_png, figname+".png"), bbox_inches='tight')
+    if show:
+        plt.show()
+    else:
+        plt.close(plt_fig)
 
 def venn2_plot (data,
                 labels = None,
@@ -728,17 +740,31 @@ def venn2_plot (data,
     """
     plt_fig = plt.figure()           
     v = venn2(data, set_labels = labels)
-    if colors:
+    if colors is not None:
         v.get_patch_by_id('10').set_color(colors[0])
         v.get_patch_by_id('01').set_color(colors[1])
     if hideNum:
         v.get_label_by_id('10').set_text('')
         v.get_label_by_id('01').set_text('')
-        if v.get_label_by_id('11'):
+        if v.get_label_by_id('11') is not None:
             v.get_label_by_id('11').set_text('')
-    if figdir and figname:
-        save_figure (figdir, figname)
-    show_figure (plt_fig, show)
+    if (figdir is not None) and (figname is not None):
+        figdir_eps = figdir / 'eps_figures'
+        figdir_pdf = figdir / 'pdf_figures'
+        figdir_png = figdir / 'png_figures'
+        if not figdir_eps.exists():
+            os.makedirs(figdir_eps)
+        if not figdir_pdf.exists():
+            os.makedirs(figdir_pdf)
+        if not figdir_png.exists():
+            os.makedirs(figdir_png)
+        plt.savefig(os.path.join(figdir_eps, figname+".eps"), bbox_inches='tight')
+        plt.savefig(os.path.join(figdir_pdf, figname+".pdf"), bbox_inches='tight')
+        plt.savefig(os.path.join(figdir_png, figname+".png"), bbox_inches='tight')
+    if show:
+        plt.show()
+    else:
+        plt.close(plt_fig)
 
 def venn3_plot (data,
                 labels = None,
@@ -761,7 +787,7 @@ def venn3_plot (data,
     """
     plt_fig = plt.figure()           
     v = venn3(data, set_labels = labels)
-    if colors:
+    if colors is not None:
         v.get_patch_by_id('100').set_color(colors[0])
         v.get_patch_by_id('010').set_color(colors[1])
         v.get_patch_by_id('001').set_color(colors[2])
@@ -777,9 +803,23 @@ def venn3_plot (data,
             v.get_label_by_id('101').set_text('')
         if v.get_label_by_id('111') is not None:
             v.get_label_by_id('111').set_text('')
-    if figdir and figname:
-        save_figure (figdir, figname)
-    show_figure (plt_fig, show)
+    if (figdir is not None) and (figname is not None):
+        figdir_eps = figdir / 'eps_figures'
+        figdir_pdf = figdir / 'pdf_figures'
+        figdir_png = figdir / 'png_figures'
+        if not figdir_eps.exists():
+            os.makedirs(figdir_eps)
+        if not figdir_pdf.exists():
+            os.makedirs(figdir_pdf)
+        if not figdir_png.exists():
+            os.makedirs(figdir_png)
+        plt.savefig(os.path.join(figdir_eps, figname+".eps"), bbox_inches='tight')
+        plt.savefig(os.path.join(figdir_pdf, figname+".pdf"), bbox_inches='tight')
+        plt.savefig(os.path.join(figdir_png, figname+".png"), bbox_inches='tight')
+    if show:
+        plt.show()
+    else:
+        plt.close(plt_fig)
 
 def network_plot (edges,
                   nodes = None,
@@ -861,90 +901,20 @@ def network_plot (edges,
             edge_cmap = edge_cmap,
             edge_vmin = edge_vmin,
             edge_vmax = edge_vmax)
-    if figdir and figname:
-        save_figure (figdir, figname)
-    show_figure (plt_fig, show)
-
-def adjust_axis (plt_fig,
-                 ph,
-                 xlabels = None,
-                 ylabels = None,
-                 xlabel = None,
-                 ylabel = None,
-                 fontsize = 12,
-                 xlim = None,
-                 ylim = None,
-                 xind = None,
-                 yind = None,
-                 yMinorTicks = None,
-                 bottomPos = None,
-                 adjustBottom = False,
-                 shiftBottomAxis = None,
-                 xbounds = None):
-    
-    if adjustBottom:
-        plt_fig.subplots_adjust(bottom = adjustBottom)
-    if shiftBottomAxis:
-        ph.spines["bottom"].set_position(("axes", shiftBottomAxis))
-    if xbounds:
-        ph.spines['bottom'].set_bounds(xbounds[0], xbounds[1])
-    if xlim:
-        ph.set_xlim(xlim)
-    if ylim:
-        ph.set_ylim(ylim)
-    ph.tick_params('both', length=10, which='major')
-    ph.get_xaxis().set_tick_params(which='both', bottom=False, top=False, labelbottom=False)
-    ph.xaxis.set_ticks_position('bottom')
-    ph.get_xaxis().set_tick_params(which='both', direction='out')
-    if xlabels:
-        if xind:
-            ph.set_xticks(xind)
-        else:
-            ph.set_xticks(xlabels)
-        ph.set_xticklabels(xlabels)
-    ph.get_yaxis().set_tick_params(which='both', right=False, direction='out')
-    ph.yaxis.set_ticks_position('left')
-    if ylabels:
-        if yind:
-            ph.set_yticks(yind)
-        else:
-            ph.set_yticks(ylabels)
-        if all(n % 1 == 0 for n in ylabels):
-            ylabels = [int(n) for n in ylabels]
-        ph.set_yticklabels(ylabels)
-    if yMinorTicks:
-        yticks = ph.get_yticks(minor=False)
-        minorLocator = MultipleLocator( (yticks[1] - yticks[0]) / (yMinorTicks + 1) )
-        ph.yaxis.set_minor_locator(minorLocator)
-    if xlabel:
-        ph.set_xlabel(xlabel)
-    if ylabel:
-        ph.set_ylabel(ylabel)
-    ph.spines["top"].set_visible(False)
-    ph.spines['right'].set_visible(False)
-    if bottomPos:
-        ph.spines['bottom'].set_position(('data',bottomPos))
-    for item in ([ph.xaxis.label, ph.yaxis.label] + ph.get_xticklabels() + ph.get_yticklabels()):
-        item.set_fontsize(fontsize)
-
-def save_figure (figdir, figname):
-    
-    figdir_eps = figdir / 'eps_figures'
-    figdir_pdf = figdir / 'pdf_figures'
-    figdir_png = figdir / 'png_figures'
-    if not figdir_eps.exists():
-        os.makedirs(figdir_eps)
-    if not figdir_pdf.exists():
-        os.makedirs(figdir_pdf)
-    if not figdir_png.exists():
-        os.makedirs(figdir_png)
-    plt.savefig(os.path.join(figdir_eps, figname+".eps"), bbox_inches='tight')
-    plt.savefig(os.path.join(figdir_pdf, figname+".pdf"), bbox_inches='tight')
-    plt.savefig(os.path.join(figdir_png, figname+".png"), bbox_inches='tight')
-
-def show_figure (plt_fig, show = True):
-    
+    if (figdir is not None) and (figname is not None):
+        figdir_eps = figdir / 'eps_figures'
+        figdir_pdf = figdir / 'pdf_figures'
+        figdir_png = figdir / 'png_figures'
+        if not figdir_eps.exists():
+            os.makedirs(figdir_eps)
+        if not figdir_pdf.exists():
+            os.makedirs(figdir_pdf)
+        if not figdir_png.exists():
+            os.makedirs(figdir_png)
+        plt.savefig(os.path.join(figdir_eps, figname+".eps"), bbox_inches='tight')
+        plt.savefig(os.path.join(figdir_pdf, figname+".pdf"), bbox_inches='tight')
+        plt.savefig(os.path.join(figdir_png, figname+".png"), bbox_inches='tight')
     if show:
-        plt.show(plt_fig)
+        plt.show()
     else:
         plt.close(plt_fig)

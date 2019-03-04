@@ -336,7 +336,7 @@ def write_fasta_file (data, idCol, seqCol, outPath):
             fout.write('>' + row[idCol] + '\n')
             fout.write(row[seqCol] + '\n')
 
-def produce_item_list(inPath, col, outPath):
+def produce_item_list(inPath, cols, outPath):
     """Write unique items from a dataframe column to file
 
     Args:
@@ -346,7 +346,7 @@ def produce_item_list(inPath, col, outPath):
 
     """
     df = pd.read_table(inPath, sep='\t')
-    items = sorted(set(df[col]))
+    items = sorted(set(df[cols].values.flatten()))
     with open(outPath, 'w') as fout:
         for item in items:
             fout.write('%s\n' % item)

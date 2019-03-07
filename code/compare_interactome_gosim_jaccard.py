@@ -1,6 +1,11 @@
 #----------------------------------------------------------------------------------------
-# This script compares functional similarity of interaction partners between the reference 
-# interactome and the structural interactome.
+# Compare functional similarity of interaction partners between the reference 
+# interactome and the structural interactome. Similarity is calculated as the 
+# jaccard index between gene ontology (GO) terms of interaction partners.
+#
+# Run the following scripts before running this script:
+# - process_interactome.py
+# - produce_structural_interactome.py
 #----------------------------------------------------------------------------------------
 
 import os
@@ -21,29 +26,26 @@ def main():
     # show figures
     showFigs = False
     
-    # directory of processed data files shared by all interactomes
+    # parent directory of all data files
     dataDir = Path('../data')
     
     # directory of data files from external sources
     extDir = dataDir / 'external'
     
-    # directory of processed data files shared by all interactomes
-    inDir = dataDir / 'processed'
+    # parent directory of all processed data files
+    procDir = dataDir / 'processed'
     
-    # directory to processed data files specific to interactome
-    interactomeDir = dataDir / 'processed' / interactome_name
-    
-    # directory to save processed data shared by all interactomes
-    outDir = dataDir / 'processed'
+    # directory of processed data files specific to interactome
+    interactomeDir = procDir / interactome_name
     
     # figure directory
     figDir = Path('../figures') / interactome_name 
     
     # create directories if not existing
+    if not procDir.exists():
+        os.makedirs(procDir)
     if not interactomeDir.exists():
         os.makedirs(interactomeDir)
-    if not outDir.exists():
-        os.makedirs(outDir)
     if not figDir.exists():
         os.makedirs(figDir)
     
@@ -53,10 +55,10 @@ def main():
     structuralInteractomeFile = interactomeDir / 'human_interface_annotated_interactome.txt'
     
     # output data files
-    GOfile = outDir / 'go.pkl'
-    MFfile = outDir / 'gof.pkl'
-    BPfile = outDir / 'gop.pkl'
-    CCfile = outDir / 'goc.pkl'
+    GOfile = procDir / 'go.pkl'
+    MFfile = procDir / 'gof.pkl'
+    BPfile = procDir / 'gop.pkl'
+    CCfile = procDir / 'goc.pkl'
     GOSimFile = interactomeDir / 'goSim_reference_structural.pkl'
     
     #------------------------------------------------------------------------------------

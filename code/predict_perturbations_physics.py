@@ -1,17 +1,34 @@
 #----------------------------------------------------------------------------------------
-# This script constructs a structural interactome from a reference interactome by mapping 
-# PPI binding interfaces, at atomic resolution, from experimentally determined 
-# three-dimensional structural models in PDB onto PPIs in the reference interactome. 
-# Next, Mendelian disease-causing mutations and common neutral mutations not associated 
-# with disease are mapped onto the structural interactome, and PPI perturbations by 
-# mutations are predicted. Mutation edgotypes ("edgetic" and "non-edgetic") per mutation 
-# and per PPI are predicted using predicted PPI perturbations. Then, the fraction of junk 
-# PPIs (PPIs neutral upon perturbation) in the structural interactome is estimated using 
-# predicted mutation edgotypes, and compared to the fraction of junk PPIs estimated using 
-# mutation edgotypes determined from experiments.
+# Predict interactome perturbations based on physics. For mutations predicted to perturb 
+# interaction based on geometry, this script re-predicts perturbations for those mutations 
+# based on change in interaction binding energy caused by mutations at the interface.
 #
-# Run script 'data_initial_processing.py' for preprocessing select data files before 
-# running this script.
+# Requirements before running this script:
+# 
+# First run the following scripts:
+# - predict_perturbations_geometry.py
+# - produce_mutation_structure_maps.py
+#
+# For physics_based perturbation prediction using ∆∆G values calculated by bindprofx:
+# 1- run script produce_bindprofx_jobs.py on the two data files nondisease_mutations_onchains.txt 
+#    and disease_mutations_onchains.txt to produce bindprofx jobs for mutations grouped per structure
+# 2- submit jobs to bindprofx to calculate mutation ∆∆G
+# 3- run script produce_bindprofx_second_round_jobs.py to process bindprofx results 
+#    and produce second-round jobs for single mutations of failed jobs
+# 4- submit second-round jobs to bindprofx to calculate mutation ∆∆G
+# 5- run script produce_bindprofx_second_round_jobs.py to process bindprofx second-round results
+# 6- repeat steps 1-5 until no new jobs are produced
+# 7- Files containing final ∆∆G results should be named:
+#    'nondisease_mutations_bindprofx_ddg.txt' and 'disease_mutations_bindprofx_ddg.txt'
+#
+# For physics_based perturbation prediction using ∆∆G values calculated by foldx:
+# 1- run script produce_foldx_jobs.py on the two data files nondisease_mutations_onchains.txt 
+#    and disease_mutations_onchains.txt to produce foldx jobs for single mutations
+# 2- submit jobs to foldx to calculate mutation ∆∆G
+# 3- run script process_foldx_jobs.py to process foldx results
+# 4- repeat steps 1-3 until no new jobs are produced
+# 5- Files containing final ∆∆G results should be named:
+#    'nondisease_mutations_foldx_ddg.txt' and 'disease_mutations_foldx_ddg.txt'
 #----------------------------------------------------------------------------------------
 
 import os
@@ -45,23 +62,23 @@ def main():
     # show figures
     showFigs = False
     
-    # directory of processed data files shared by all interactomes
-    dataDir = Path('../data') / 'processed'
+    # parent directory of all data files
+    dataDir = Path('../data')
+    
+    # parent directory of all processed data files
+    procDir = dataDir / 'processed'
     
     # directory of processed data files specific to interactome
-    interactomeDir = dataDir / interactome_name
-    
-    # directory to save output data files
-    outDir = interactomeDir
+    interactomeDir = procDir / interactome_name
     
     # figure directory
     figDir = Path('../figures') / interactome_name
     
     # create output directories if not existing
+    if not procDir.exists():
+        os.makedirs(procDir)
     if not interactomeDir.exists():
         os.makedirs(interactomeDir)
-    if not outDir.exists():
-        os.makedirs(outDir)
     if not figDir.exists():
         os.makedirs(figDir)
     
@@ -73,7 +90,7 @@ def main():
     # output data files
     natMutDDGoutFile = interactomeDir / ('nondisMut_%s_∆∆G_used.txt' % ddg_method)
     disMutDDGoutFile = interactomeDir / ('disMut_%s_∆∆G_used.txt' % ddg_method)
-    physicsPerturbsFile = outDir / ('mutation_perturbs_physics_%s.pkl' % ddg_method)
+    physicsPerturbsFile = interactomeDir / ('mutation_perturbs_physics_%s.pkl' % ddg_method)
     
     #------------------------------------------------------------------------------------
     # Fraction of mutation-targeted PPIs with ∆∆G exceeding a specified cutoff

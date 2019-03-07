@@ -1,5 +1,8 @@
 #----------------------------------------------------------------------------------------
 # Plot gene ontology (GO) similarity of interaction partners
+#
+# Run the following script before running this script:
+# - compare_interactome_gosim.py
 #----------------------------------------------------------------------------------------
 
 import os
@@ -12,10 +15,11 @@ from plot_tools import multi_bar_plot
 def main():
     
     # reference interactome name
-    ref_interactome_name = 'IntAct'
+    # options: HI-II-14, IntAct
+    ref_interactome_name = 'HI-II-14'
     
     # similarity measure used to calculate GO similarity
-    sim_measure = 'Resnik'
+    sim_measure = 'SimGIC'
     
     # root ontologies on which GO similarity was calculated
     ont_root = ['biological_process', 'molecular_function', 'cellular_component']
@@ -32,11 +36,14 @@ def main():
     # show figures
     showFigs = False
     
-    # directory of processed data files shared by all interactomes
-    dataDir = Path('../data') / 'processed'
+    # parent directory of all data files
+    dataDir = Path('../data')
+    
+    # parent directory of processed data files
+    procDir = dataDir / 'processed'
     
     # directory of processed data files specific to interactome
-    interactomeDir = dataDir / ref_interactome_name
+    interactomeDir = procDir / ref_interactome_name
     
     # figure directory
     figDir = Path('../figures') / ref_interactome_name
@@ -63,13 +70,13 @@ def main():
                    errors = errors,
                    xlabels = [r.replace('_','\n') for r in ont_root],
                    ylabel = 'Gene ontology similarity\nof interaction partners',
-                   ylabels = [round(x, 1) for x in np.arange(0, 6, 1)],
+                   ylabels = [round(x, 1) for x in np.arange(0, 0.6, 0.1)],
                    colors = interactome_colors,
                    #edgecolor = 'k',
                    barwidth = 0.2,
                    bargap = 0.02,
                    fontsize = 18,
-                   leg = interactome_names,
+                   #leg = interactome_names,
                    show = showFigs,
                    figdir = figDir,
                    figname = 'interactome_gosim_%s' % sim_measure)

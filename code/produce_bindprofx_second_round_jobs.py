@@ -1,25 +1,40 @@
+#----------------------------------------------------------------------------------------
+# This script processes results from bindprofx calculations, and produces second-round jobs
+# from jobs that failed in the first-round of bindprofx calculations. Each produced 
+# second-round job contains only one mutation.
+#
+# This script also processes results from bindprofx second-round calculations.
+#
+# Requirements:
+# Files must be in format produced by script produce_mutation_structure_maps.py
+#----------------------------------------------------------------------------------------
+
 import os
 from pathlib import Path
 from ddg_tools import read_bindprofx_results, produce_bindprofx_jobs, write_mutation_ddg_tofile
 
 def main():
     
-    # reference interactome name. Options: 'HI-II-14' or 'IntAct'
+    # reference interactome name
+    # options: HI-II-14, IntAct
     interactome_name = 'IntAct'
     
-    # directory for input data files
-    dataDir = Path('../data') / 'processed'
+    # parent directory of all data files
+    dataDir = Path('../data')
+    
+    # parent directory of all processed data files
+    procDir = dataDir / 'processed'
     
     # directory of processed data files specific to interactome
-    interactomeDir = dataDir / interactome_name
+    interactomeDir = procDir / interactome_name
     
-    # directory for input data files
+    # directory of bindprofx results
     inDir = interactomeDir / 'bindprofx' / 'results_all_12'
     
-    # directory for output data files
+    # directory of bindprofx output jobs
     outDir = interactomeDir / 'bindprofx'
     
-    # directory for PDB structure files
+    # directory of PDB structure files
     pdbDir = Path('/Volumes/MG_Samsung/pdb_files')
     
     # create output directories if not existing

@@ -1,5 +1,8 @@
 #----------------------------------------------------------------------------------------
 # This script processes mutations from the ClinVar database.
+#
+# Run the following scripts before running this script:
+# - produce_data_mappings.py
 #----------------------------------------------------------------------------------------
 
 import os
@@ -13,38 +16,36 @@ from mutation_processing_tools import (filter_clinvar_mutations,
 
 def main():
     
+    # parent directory of all data files
     dataDir = Path('../data')
     
     # directory of data files from external sources
     extDir = dataDir / 'external'
     
-    # directory of processed data files shared by all interactomes
-    inDir = dataDir / 'processed'
-    
-    # directory to save output data files
-    outDir = dataDir / 'processed'
+    # parent directory of all processed data files
+    procDir = dataDir / 'processed'
         
     # create output directories if not existing
-    if not outDir.exists():
-        os.makedirs( outDir )
+    if not procDir.exists():
+        os.makedirs(procDir)
     
     # number of residues included in each side of mutation flanking sequence
     flankingSeqSideLen = 10
     
     # input data files
     allClinvarMutationsFile = extDir / 'variant_summary.txt'
-    UniprotIDmapFile = inDir / 'to_human_uniprotID_map.pkl'
-    rnaToProteinRefseqIDMapFile = inDir / 'human_rnaToProtein_refseqID_map.pkl'
-    refseqFile = inDir / 'refseq_human_protein_sequences.txt'
-    UniqueGeneSequenceFile = inDir / 'human_unique_gene_reference_sequences.txt'
+    UniprotIDmapFile = procDir / 'to_human_uniprotID_map.pkl'
+    rnaToProteinRefseqIDMapFile = procDir / 'human_rnaToProtein_refseqID_map.pkl'
+    refseqFile = procDir / 'refseq_human_protein_sequences.txt'
+    UniqueGeneSequenceFile = procDir / 'human_unique_gene_reference_sequences.txt'
     
     # output data files
-    clinvarMutationsFile1 = outDir / 'clinvar_mutations1.txt'
-    clinvarMutationsFile2 = outDir / 'clinvar_mutations2.txt'
-    clinvarMutationsFile3 = outDir / 'clinvar_mutations3.txt'
-    clinvarMutationsFile4 = outDir / 'clinvar_mutations4.txt'
-    clinvarMutationsFile5 = outDir / 'clinvar_mutations5.txt'
-    clinvarMutationsFile6 = outDir / 'clinvar_mutations6.txt'
+    clinvarMutationsFile1 = procDir / 'clinvar_mutations1.txt'
+    clinvarMutationsFile2 = procDir / 'clinvar_mutations2.txt'
+    clinvarMutationsFile3 = procDir / 'clinvar_mutations3.txt'
+    clinvarMutationsFile4 = procDir / 'clinvar_mutations4.txt'
+    clinvarMutationsFile5 = procDir / 'clinvar_mutations5.txt'
+    clinvarMutationsFile6 = procDir / 'clinvar_mutations6.txt'
     
     #------------------------------------------------------------------------------------
     # process disease mutations

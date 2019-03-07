@@ -1,17 +1,14 @@
 #----------------------------------------------------------------------------------------
-# This script constructs a structural interactome from a reference interactome by mapping 
-# PPI binding interfaces, at atomic resolution, from experimentally determined 
-# three-dimensional structural models in PDB onto PPIs in the reference interactome. 
-# Next, Mendelian disease-causing mutations and common neutral mutations not associated 
-# with disease are mapped onto the structural interactome, and PPI perturbations by 
-# mutations are predicted. Mutation edgotypes ("edgetic" and "non-edgetic") per mutation 
-# and per PPI are predicted using predicted PPI perturbations. Then, the fraction of junk 
-# PPIs (PPIs neutral upon perturbation) in the structural interactome is estimated using 
-# predicted mutation edgotypes, and compared to the fraction of junk PPIs estimated using 
-# mutation edgotypes determined from experiments.
+# Predict interactome perturbations based on geometry. Given a structural interactome 
+# with PPI binding interface annotations, common neutral mutations not associated 
+# with disease as well as Mendelian disease-causing mutations are mapped onto the 
+# structural interactome. Then, PPI perturbations caused by mutations are predicted based 
+# on mutation location relative to interaction interface.
 #
-# Run script 'data_initial_processing.py' for preprocessing select data files before 
-# running this script.
+# Run the following scripts before running this script:
+# - produce_structural_interactome.py
+# - process_dbsnp_mutations.py
+# - process_clinvar_mutations.py
 #----------------------------------------------------------------------------------------
 
 import os
@@ -27,28 +24,28 @@ def main():
     # reference interactome name. Options: 'HI-II-14' or 'IntAct'
     interactome_name = 'IntAct'
     
-    # directory of processed data files shared by all interactomes
-    dataDir = Path('../data') / 'processed'
+    # parent directory of all data files
+    dataDir = Path('../data')
+    
+    # parent directory of all processed data files
+    procDir = dataDir / 'processed'
     
     # directory of processed data files specific to interactome
-    interactomeDir = dataDir / interactome_name
-    
-    # directory to save output data files
-    outDir = dataDir / interactome_name
+    interactomeDir = procDir / interactome_name
     
     # create output directories if not existing
+    if not procDir.exists():
+        os.makedirs(procDir)
     if not interactomeDir.exists():
         os.makedirs(interactomeDir)
-    if not outDir.exists():
-        os.makedirs(outDir)
     
     # input data files
-    naturalMutationsFile = dataDir / 'dbsnp_mutations4.txt'
-    diseaseMutationsFile = dataDir / 'clinvar_mutations6.txt'
+    naturalMutationsFile = procDir / 'dbsnp_mutations4.txt'
+    diseaseMutationsFile = procDir / 'clinvar_mutations6.txt'
     interfaceAnnotatedInteractomeFile = interactomeDir / 'human_interface_annotated_interactome.txt'
     
     # output data files
-    uniqueMutationPerturbsFile = outDir / 'unique_mutation_perturbs_geometry.pkl'
+    uniqueMutationPerturbsFile = interactomeDir / 'unique_mutation_perturbs_geometry.pkl'
     
     #------------------------------------------------------------------------------------
     # further process mutations
@@ -74,7 +71,7 @@ def main():
     # Consider PPI perturbations only for PPIs with this minimum number of partners
     minPartners = 1
     
-    annotatedInteractome = read_interface_annotated_interactome(interfaceAnnotatedInteractomeFile)
+    annotatedInteractome = read_interface_annotated_interactome (interfaceAnnotatedInteractomeFile)
     
     print( '\n' + 'Predicting PPI perturbations based on geometry' )
     naturalMutation_perturbs = mutation_PPI_interface_perturbations(naturalMutations,

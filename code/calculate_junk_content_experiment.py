@@ -1,17 +1,7 @@
 #----------------------------------------------------------------------------------------
-# This script constructs a structural interactome from a reference interactome by mapping 
-# PPI binding interfaces, at atomic resolution, from experimentally determined 
-# three-dimensional structural models in PDB onto PPIs in the reference interactome. 
-# Next, Mendelian disease-causing mutations and common neutral mutations not associated 
-# with disease are mapped onto the structural interactome, and PPI perturbations by 
-# mutations are predicted. Mutation edgotypes ("edgetic" and "non-edgetic") per mutation 
-# and per PPI are predicted using predicted PPI perturbations. Then, the fraction of junk 
-# PPIs (PPIs neutral upon perturbation) in the structural interactome is estimated using 
-# predicted mutation edgotypes, and compared to the fraction of junk PPIs estimated using 
-# mutation edgotypes determined from experiments.
-#
-# Run script 'data_initial_processing.py' for preprocessing select data files before 
-# running this script.
+# Calculate the fraction of junk protein-protein interactions (PPIs) in the human 
+# interactome, i.e., the fraction of PPIs that are effectively neutral upon perturbation.
+# The fraction of junk PPIs is calculated from experimentally determined PPI perturbations.
 #----------------------------------------------------------------------------------------
 
 import os
@@ -25,6 +15,7 @@ from plot_tools import pie_plot
 
 def main():
     
+    # reference interactome name
     interactome_name = 'experiment'
     
     # calculate confidence interval for the fraction of junk PPIs
@@ -43,13 +34,13 @@ def main():
     dataDir = Path('../data')
     
     # directory of data files from external sources
-    inDir = dataDir / 'external'
+    extDir = dataDir / 'external'
+    
+    # parent directory of all processed data files
+    procDir = dataDir / 'processed'
     
     # directory of processed data files specific to interactome
-    interactomeDir = dataDir / 'processed' / interactome_name
-    
-    # directory to save output data files
-    outDir = interactomeDir
+    interactomeDir = procDir / interactome_name
     
     # figure directory
     if consider_exp_QuasiNull_perturbs:
@@ -58,20 +49,20 @@ def main():
         figDir = Path('../figures') / interactome_name
     
     # create output directories if not existing
+    if not procDir.exists():
+        os.makedirs(procDir)
     if not interactomeDir.exists():
         os.makedirs(interactomeDir)
-    if not outDir.exists():
-        os.makedirs(outDir)
     if not figDir.exists():
         os.makedirs(figDir)
     
     # input data files
-    edgotypeFile = inDir / "Sahni_2015_Table_S3.xlsx"
+    edgotypeFile = extDir / "Sahni_2015_Table_S3.xlsx"
     
     # output data files
-    natMutEdgotypeFile = outDir / 'nondisease_mutation_edgotype_experiment.txt'
-    disMutEdgotypeFile = outDir / 'disease_mutation_edgotype_experiment.txt'
-    junkPPIFile = outDir / 'fraction_junk_PPIs_experiment.pkl'
+    natMutEdgotypeFile = interactomeDir / 'nondisease_mutation_edgotype_experiment.txt'
+    disMutEdgotypeFile = interactomeDir / 'disease_mutation_edgotype_experiment.txt'
+    junkPPIFile = interactomeDir / 'fraction_junk_PPIs_experiment.pkl'
                    
     #------------------------------------------------------------------------------------
     # process experimental edgotype data

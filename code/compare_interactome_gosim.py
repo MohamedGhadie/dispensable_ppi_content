@@ -1,6 +1,15 @@
 #----------------------------------------------------------------------------------------
-# This script compares functional similarity of interaction partners between the 
-# structural interactome, the reference interactome and random interactions.
+# Compare functional similarity of interaction partners between the structural 
+# interactome, the reference interactome and random interactions. Similarity is 
+# calculated by the fastsemsim library using a selected semantic similarity measure
+# applied to gene ontology (GO) terms of interaction partners.
+#
+# Run the following scripts before running this script:
+# - process_interactome.py
+# - produce_structural_interactome.py
+#
+# Requirements:
+# - install fastsemsim using the command line 'pip install fastsemsim'
 #----------------------------------------------------------------------------------------
 
 import os
@@ -17,13 +26,14 @@ from plot_tools import bar_plot
 
 def main():
     
-    # reference interactome name. Options: HI-II-14, IntAct
+    # reference interactome name
+    # options: HI-II-14, IntAct
     interactome_name = 'IntAct'
     
     # similarity measure to calculate GO similarity
     # options: Resnik, Lin, Jiang-Conrath, SimGIC, SimUI, SimIC, SimRel, Dice, SimTO
     #           SimNTO, Jaccard, Czekanowski-Dice, Cosine, GSESAME, SimICND, SimICNP
-    sim_measure = 'Resnik'
+    sim_measure = 'SimGIC'
     
     # mixing strategy for merging GO term semantic similarities
     # options: max, avg, BMA (best match average)
@@ -57,23 +67,20 @@ def main():
     # directory of data files from external sources
     extDir = dataDir / 'external'
     
-    # directory of processed data files shared by all interactomes
-    inDir = dataDir / 'processed'
+    # parent directory of all processed data files
+    procDir = dataDir / 'processed'
     
-    # directory to processed data files specific to interactome
-    interactomeDir = dataDir / 'processed' / interactome_name
-    
-    # directory to save output data files
-    outDir = dataDir / 'processed'
-    
+    # directory of processed data files specific to interactome
+    interactomeDir = procDir / interactome_name
+        
     # figure directory
     figDir = Path('../figures') / interactome_name 
     
     # create directories if not existing
+    if not procDir.exists():
+        os.makedirs(procDir)
     if not interactomeDir.exists():
         os.makedirs(interactomeDir)
-    if not outDir.exists():
-        os.makedirs(outDir)
     if not figDir.exists():
         os.makedirs(figDir)
     

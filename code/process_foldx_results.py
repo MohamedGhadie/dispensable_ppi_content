@@ -1,28 +1,44 @@
+#----------------------------------------------------------------------------------------
+# This script processes results from foldx calculations. Since each foldx result file 
+# contains only one mutation, no second-round jobs will be produced.
+#
+# Requirements:
+# Files must be in format produced by script produce_mutation_structure_maps.py
+#----------------------------------------------------------------------------------------
+
 import os
 from pathlib import Path
 from ddg_tools import read_foldx_results, produce_foldx_jobs, write_mutation_ddg_tofile
 
 def main():
     
-    # reference interactome name. Options: 'HI-II-14' or 'IntAct'
+    # reference interactome name
+    # options: HI-II-14, IntAct
     interactome_name = 'IntAct'
     
-    # directory for input data files
-    dataDir = Path('../data') / 'processed'
+    # parent directory of all data files
+    dataDir = Path('../data')
+    
+    # parent directory of all processed data files
+    procDir = dataDir / 'processed'
     
     # directory of processed data files specific to interactome
-    interactomeDir = dataDir / interactome_name
+    interactomeDir = procDir / interactome_name
     
-    # directory for input data files
+    # directory of foldx results
     inDir = interactomeDir / 'foldx' / 'results_all_2'
     
-    # directory for output data files
+    # directory of foldx output jobs
     outDir = interactomeDir / 'foldx'
     
-    # directory for PDB structure files
+    # directory of PDB structure files
     pdbDir = Path('/Volumes/MG_Samsung/pdb_files')
     
     # create output directories if not existing
+    if not procDir.exists():
+        os.makedirs(procDir)
+    if not interactomeDir.exists():
+        os.makedirs(interactomeDir)
     if not outDir.exists():
         os.makedirs(outDir)
     

@@ -1,3 +1,9 @@
+# Process reference interactome from protein-protein interaction dataset.
+#
+# Run the following scripts before running this script:
+# - produce_data_mappings.py
+#----------------------------------------------------------------------------------------
+
 import os
 import pandas as pd
 from pathlib import Path
@@ -10,45 +16,41 @@ from interactome_tools import (write_interactome_sequences,
 
 def main():
     
-    # valid reference interactome names
-    interactome_names = ['HI-II-14', 'IntAct']
+    # reference interactome name
+    # options: HI-II-14, IntAct
+    interactome_name = 'IntAct'
     
-    # choose interactome (index in interactome_names)
-    interactome_choise = 0
-        
-    # select reference interactome
-    interactome_name = interactome_names[ interactome_choise ]
+    # parent directory of all data files
+    dataDir = Path('../data')
     
-    dataDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data')
+    # directory of data files from external sources
+    extDir = dataDir / 'external'
     
-    # directory for external input data files
-    extInDir = dataDir / 'external'
+    # parent directory of all processed data files
+    procDir = dataDir / 'processed'
     
-    # directory for processed input data files
-    inDir = dataDir / 'processed'
-    
-    # directory to save processed data specific to interactome
-    outDir = dataDir / 'processed' / interactome_name
+    # directory of processed data files specific to interactome
+    interactomeDir = procDir / interactome_name
          
     # create output directories if not existing
-    if not outDir.exists():
-        os.makedirs(outDir)
+    if not procDir.exists():
+        os.makedirs(procDir)
+    if not interactomeDir.exists():
+        os.makedirs(interactomeDir)
     
-    # input files from external sources
-    HI_II_14_rawfile = extInDir / 'HI-II-14.tsv'
-    IntAct_rawfile = extInDir / 'intact.txt'
-    
-    # processed input data files
-    UniprotIDmapFile = inDir / 'to_human_uniprotID_map.pkl'
-    UniqueGeneSwissProtIDFile = inDir / 'uniprot_unique_gene_reviewed_human_proteome.list'
-    GeneMapFile = inDir / 'to_human_geneName_map.pkl'
-    UniqueGeneSequenceFile = inDir / 'human_unique_gene_reference_sequences.txt'
+    # input data files
+    HI_II_14_rawfile = extDir / 'HI-II-14.tsv'
+    IntAct_rawfile = extDir / 'intact.txt'
+    UniprotIDmapFile = procDir / 'to_human_uniprotID_map.pkl'
+    UniqueGeneSwissProtIDFile = procDir / 'uniprot_unique_gene_reviewed_human_proteome.list'
+    GeneMapFile = procDir / 'to_human_geneName_map.pkl'
+    UniqueGeneSequenceFile = procDir / 'human_unique_gene_reference_sequences.txt'
     
     # output data files
-    InteractomeFile1 = outDir / 'human_interactome_all.txt'
-    InteractomeFile = outDir / 'human_interactome.txt'
-    InteractomeSequenceFile = outDir / 'interactome_sequences.fasta'
-    ProteinPartnersFile = outDir / 'protein_interaction_partners.pkl'
+    InteractomeFile1 = interactomeDir / 'human_interactome_all.txt'
+    InteractomeFile = interactomeDir / 'human_interactome.txt'
+    InteractomeSequenceFile = interactomeDir / 'interactome_sequences.fasta'
+    ProteinPartnersFile = interactomeDir / 'protein_interaction_partners.pkl'
     
     if not InteractomeFile1.is_file():
         print('parsing interactome dataset')

@@ -1,22 +1,35 @@
+#----------------------------------------------------------------------------------------
+# This script produces jobs for mutations mapped onto structures to be submitted to 
+# bindprofx for ∆∆G calculations. Mutations in the same structure are combined in one job. 
+# Mutations with existing ∆∆G values in the input file are skipped.
+#
+# Requirements:
+# Files must be in format produced by script produce_mutation_structure_maps.py
+#----------------------------------------------------------------------------------------
+
 import os
 from pathlib import Path
 from ddg_tools import read_unprocessed_ddg_mutations, produce_bindprofx_jobs
 
 def main():
     
-    # reference interactome name. Options: 'HI-II-14' or 'IntAct'
+    # reference interactome name
+    # options: HI-II-14, IntAct
     interactome_name = 'IntAct'
     
-    # directory for input data files
-    dataDir = Path('../data') / 'processed'
+    # parent directory of all data files
+    dataDir = Path('../data')
+    
+    # parent directory of all processed data files
+    procDir = dataDir / 'processed'
     
     # directory of processed data files specific to interactome
-    interactomeDir = dataDir / interactome_name
+    interactomeDir = procDir / interactome_name
     
-    # directory for output data files
+    # directory of bindprofx output jobs
     outDir = interactomeDir / 'bindprofx'
     
-    # directory for PDB structure files
+    # directory of PDB structure files
     pdbDir = Path('/Volumes/MG_Samsung/pdb_files')
     
     # input file containing mutations to submit to bindprofx

@@ -1,17 +1,11 @@
 #----------------------------------------------------------------------------------------
-# This script constructs a structural interactome from a reference interactome by mapping 
-# PPI binding interfaces, at atomic resolution, from experimentally determined 
-# three-dimensional structural models in PDB onto PPIs in the reference interactome. 
-# Next, Mendelian disease-causing mutations and common neutral mutations not associated 
-# with disease are mapped onto the structural interactome, and PPI perturbations by 
-# mutations are predicted. Mutation edgotypes ("edgetic" and "non-edgetic") per mutation 
-# and per PPI are predicted using predicted PPI perturbations. Then, the fraction of junk 
-# PPIs (PPIs neutral upon perturbation) in the structural interactome is estimated using 
-# predicted mutation edgotypes, and compared to the fraction of junk PPIs estimated using 
-# mutation edgotypes determined from experiments.
+# Calculate the fraction of junk protein-protein interactions (PPIs) in the structural
+# interactome, i.e., the fraction of PPIs that are effectively neutral upon perturbation.
+# The fraction of junk PPIs is calculated from geometry-based predictions of PPI 
+# perturbations.
 #
-# Run script 'data_initial_processing.py' for preprocessing select data files before 
-# running this script.
+# Run the following script before running this script:
+# - predict_perturbations_geometry.py
 #----------------------------------------------------------------------------------------
 
 import os
@@ -25,7 +19,8 @@ from mutation_interface_edgotype import assign_edgotypes
 
 def main():
     
-    # reference interactome name. Options: 'HI-II-14' or 'IntAct'
+    # reference interactome name
+    # options: HI-II-14, IntAct
     interactome_name = 'IntAct'
     
     # set to True to calculate junk PPI content using fraction of mono-edgetic mutations 
@@ -41,39 +36,39 @@ def main():
     # show figures
     showFigs = False
     
-    # directory of processed data files shared by all interactomes
-    dataDir = Path('../data') / 'processed'
+    # parent directory of all data files
+    dataDir = Path('../data')
+    
+    # parent directory of all processed data files
+    procDir = dataDir / 'processed'
     
     # directory of processed data files specific to interactome
-    interactomeDir = dataDir / interactome_name
-    
-    # directory to save output data files
-    outDir = interactomeDir
+    interactomeDir = procDir / interactome_name
     
     # figure directory
     figDir = Path('../figures') / interactome_name
     
     # create output directories if not existing
+    if not procDir.exists():
+        os.makedirs(procDir)
     if not interactomeDir.exists():
         os.makedirs(interactomeDir)
-    if not outDir.exists():
-        os.makedirs(outDir)
     if not figDir.exists():
         os.makedirs(figDir)
     
     # input data files
-    uniqueMutationPerturbsFile = interactomeDir / 'unique_mutation_perturbs_geometry.pkl'
+    mutationPerturbsFile = interactomeDir / 'unique_mutation_perturbs_geometry.pkl'
     
     # output data files
-    natMutEdgotypeFile = outDir / 'nondisease_mutation_edgotype_geometry.txt'
-    disMutEdgotypeFile = outDir / 'disease_mutation_edgotype_geometry.txt'
-    junkPPIFile = outDir / ('fraction_junk_PPIs_geometry%s.pkl' % ('_monoedgetic' if mono_edgetic else ''))
+    natMutEdgotypeFile = interactomeDir / 'nondisease_mutation_edgotype_geometry.txt'
+    disMutEdgotypeFile = interactomeDir / 'disease_mutation_edgotype_geometry.txt'
+    junkPPIFile = interactomeDir / ('fraction_junk_PPIs_geometry%s.pkl' % ('_monoedgetic' if mono_edgetic else ''))
     
     #------------------------------------------------------------------------------------
     # Load interactome perturbations
     #------------------------------------------------------------------------------------
     
-    with open(uniqueMutationPerturbsFile, 'rb') as f:
+    with open(mutationPerturbsFile, 'rb') as f:
         naturalPerturbs, diseasePerturbs = pickle.load(f)
     
     #------------------------------------------------------------------------------------

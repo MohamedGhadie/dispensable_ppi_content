@@ -1,5 +1,9 @@
 #----------------------------------------------------------------------------------------
 # Display properties of the structural interactome.
+#
+# Run the following scripts before running this script:
+# - produce_data_mappings.py
+# - produce_structural_interactome.py
 #----------------------------------------------------------------------------------------
 
 import os
@@ -13,43 +17,38 @@ from plot_tools import bar_plot, multi_histogram_plot
 
 def main():
     
-    # reference interactome name. Options: 'HI-II-14' or 'IntAct'
+    # reference interactome name
+    # options: HI-II-14, IntAct
     interactome_name = 'IntAct'
     
     # show figures
     showFigs = False
     
-    # directory of processed data files shared by all interactomes
+    # parent directory of all data files
     dataDir = Path('../data')
     
-    # directory of data files from external sources
-    extDir = dataDir / 'external'
+    # parent directory of all processed data files
+    procDir = dataDir / 'processed'
     
-    # directory of processed data files shared by all interactomes
-    inDir = dataDir / 'processed'
-    
-    # directory to processed data files specific to interactome
-    interactomeDir = dataDir / 'processed' / interactome_name
-    
-    # directory to save processed data shared by all interactomes
-    outDir = dataDir / 'processed'
+    # directory of processed data files specific to interactome
+    interactomeDir = procDir / interactome_name
     
     # figure directory
     figDir = Path('../figures') / interactome_name 
     
     # create directories if not existing
+    if not procDir.exists():
+        os.makedirs(procDir)
     if not interactomeDir.exists():
         os.makedirs(interactomeDir)
-    if not outDir.exists():
-        os.makedirs(outDir)
     if not figDir.exists():
         os.makedirs(figDir)
     
     # input data files
-    GeneMapFile = inDir / 'to_human_geneName_map.pkl'
-    ProteinSeqFile = inDir / 'human_reference_sequences.pkl'
-    chainListFile = inDir / 'pdb_seqres_chains.list'
-    pdbChainsFile = inDir / 'pdb_seqres_chains.pkl'
+    GeneMapFile = procDir / 'to_human_geneName_map.pkl'
+    ProteinSeqFile = procDir / 'human_reference_sequences.pkl'
+    chainListFile = procDir / 'pdb_seqres_chains.list'
+    pdbChainsFile = procDir / 'pdb_seqres_chains.pkl'
     interactomeFile = interactomeDir / 'human_interactome.txt'
     chainAnnotatedInteractomeFile = interactomeDir / 'human_chain_annotated_interactome.txt'
     structuralInteractomeFile = interactomeDir / 'human_interface_annotated_interactome.txt'

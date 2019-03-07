@@ -1,5 +1,10 @@
 #----------------------------------------------------------------------------------------
-# Plot the fraction of junk PPIs calculated from predictions and experiments
+# Plot the fraction of junk PPIs calculated from predictions and experiments.
+#
+# Run the following scripts before running this script:
+# - calculate_junk_content_geometry.py
+# - calculate_junk_content_physics.py
+# - calculate_junk_content_experiment.py
 #----------------------------------------------------------------------------------------
 
 import os
@@ -29,7 +34,6 @@ def main():
     struc_interactome_names = ['Y2H-SI', 'IntAct-SI', 'experiment']
     
     # interactome colors for plot
-    #interactome_colors = ['blue', 'green', 'red']
     interactome_colors = ['black', 'black', 'black']
     
     # plot confidence interval for the fraction of junk PPIs
@@ -38,12 +42,12 @@ def main():
     # show figures
     showFigs = False
     
-    # directory of processed data files shared by all interactomes
-    dataDir = Path('../data') / 'processed'
+    # parent directory of all data files
+    dataDir = Path('../data')
     
-    # directory of processed data files shared by all interactomes
-    inDir = dataDir
-    
+    # parent directory of processed data files
+    procDir = dataDir / 'processed'
+        
     # figure directory
     figDir = Path('../figures') / 'combined'
     
@@ -63,7 +67,7 @@ def main():
     
     pN_E_results, pN_E_bounds = [], []
     for interactome_name, junkPPIFile_name in zip(interactome_names, junkPPIFile_names):
-        junkPPIFile = inDir / interactome_name / junkPPIFile_name
+        junkPPIFile = procDir / interactome_name / junkPPIFile_name
         with open(junkPPIFile, 'rb') as f:
             all_results = pickle.load(f)
         pN_E_results.append( 100 * all_results['P(N|E)'] )

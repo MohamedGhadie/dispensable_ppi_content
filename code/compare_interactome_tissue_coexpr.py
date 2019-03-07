@@ -1,6 +1,11 @@
 #----------------------------------------------------------------------------------------
-# This script compares tissue coexpression of interaction partners between the structural 
+# Compare tissue coexpression of interaction partners between the structural 
 # interactome, the reference interactome and random interactions.
+#
+# Run the following scripts before running this script:
+# - produce_data_mappings.py
+# - process_interactome.py
+# - produce_structural_interactome.py
 #----------------------------------------------------------------------------------------
 
 import os
@@ -47,15 +52,12 @@ def main():
     # directory of data files from external sources
     extDir = dataDir / 'external'
     
-    # directory of processed data files shared by all interactomes
-    inDir = dataDir / 'processed'
+    # parent directory of all processed data files
+    procDir = dataDir / 'processed'
     
-    # directory to processed data files specific to interactome
-    interactomeDir = dataDir / 'processed' / interactome_name
-    
-    # directory to save processed data shared by all interactomes
-    outDir = dataDir / 'processed'
-    
+    # directory of processed data files specific to interactome
+    interactomeDir = procDir / interactome_name
+        
     # figure directory
     figDir = Path('../figures') / interactome_name 
     
@@ -73,13 +75,13 @@ def main():
     hpaExprFile = extDir / 'normal_tissue.tsv'
     fantomExprFile = extDir / 'hg38_fair+new_CAGE_peaks_phase1and2_tpm_ann.osc.txt'
     fantomSampleTypeFile = extDir / 'fantom5_sample_type.xlsx'
-    uniprotIDmapFile = inDir / 'to_human_uniprotID_map.pkl'
-    uniqueGeneSwissProtIDFile = inDir / 'uniprot_unique_gene_reviewed_human_proteome.list'
+    uniprotIDmapFile = procDir / 'to_human_uniprotID_map.pkl'
+    uniqueGeneSwissProtIDFile = procDir / 'uniprot_unique_gene_reviewed_human_proteome.list'
     interactomeFile = interactomeDir / 'human_interactome.txt'
     structuralInteractomeFile = interactomeDir / 'human_interface_annotated_interactome.txt'
     
     # output data files
-    proteinExprFile = outDir / ('protein_expr_%s.pkl' % expr_db)
+    proteinExprFile = procDir / ('protein_expr_%s.pkl' % expr_db)
     coexprFile = interactomeDir / ('interactome_coexpr_%s.pkl' % expr_db)
     
     #------------------------------------------------------------------------------------

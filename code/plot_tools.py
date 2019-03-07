@@ -188,8 +188,6 @@ def multi_bar_plot (data,
         errors = []
     if len(errors) < numGroups:
         errors.extend([[]] * (numGroups - len(errors)))
-    if not leg:
-        leg = ['Group ' + str(i+1) for i in range(numGroups)]
     if isinstance(colors, str):
         colors = [colors] * numGroups
     elif len(colors) < numGroups:
@@ -198,8 +196,9 @@ def multi_bar_plot (data,
         ecolors = [ecolors] * numGroups
     elif len(ecolors) < numGroups:
         ecolors.extend(['k'] * (numGroups - len(ecolors)))
+    labels = leg if leg else [None] * numGroups
     
-    for i, d, error, color, ecolor, label in zip(range(numGroups), data, errors, colors, ecolors, leg):
+    for i, d, error, color, ecolor, label in zip(range(numGroups), data, errors, colors, ecolors, labels):
         numBars = len(d)
         if overlap:
             ind = list(np.arange(1, numBars + 1))
@@ -230,7 +229,8 @@ def multi_bar_plot (data,
                             capsize = capsize,
                             capthick = ewidth,
                             ecolor = ecol)
-    ph.legend()
+    if leg:
+        ph.legend()
     if not xticks:
         if overlap:
             xticks = list(np.arange(1, numBars + 1))

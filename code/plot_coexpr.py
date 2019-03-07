@@ -1,5 +1,8 @@
 #----------------------------------------------------------------------------------------
 # Plot tissue coexpression of interaction partners
+#
+# Run the following script before running this script:
+# - compare_interactome_tissue_coexpr.py
 #----------------------------------------------------------------------------------------
 
 import os
@@ -11,11 +14,12 @@ from plot_tools import multi_bar_plot
 
 def main():
     
+    # reference interactome name
+    # options: HI-II-14, IntAct
+    ref_interactome_name = 'IntAct'
+    
     # tissue expression databases
     expr_db = ['Illumina', 'GTEx', 'HPA', 'Fantom5']
-    
-    # reference interactome name
-    ref_interactome_name = 'IntAct'
     
     # interactome names
     interactome_names = ['Random interactions', 'Reference interactome', 'Structural interactome']
@@ -26,11 +30,14 @@ def main():
     # show figures
     showFigs = False
     
-    # directory of processed data files shared by all interactomes
-    dataDir = Path('../data') / 'processed'
+    # parent directory of all data files
+    dataDir = Path('../data')
+    
+    # parent directory of processed data files
+    procDir = dataDir / 'processed'
     
     # directory of processed data files specific to interactome
-    interactomeDir = dataDir / ref_interactome_name
+    interactomeDir = procDir / ref_interactome_name
     
     # figure directory
     figDir = Path('../figures') / ref_interactome_name

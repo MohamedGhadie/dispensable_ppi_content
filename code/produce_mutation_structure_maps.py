@@ -1,3 +1,13 @@
+#----------------------------------------------------------------------------------------
+# Map mutations in the structural interactome onto structural models to be submitted for 
+# ∆∆G calculations.
+#
+# Run the following scripts before running this script:
+# - produce_data_mappings.py
+# - produce_structural_interactome.py
+# - calculate_junk_content_geometry.py
+#----------------------------------------------------------------------------------------
+
 import os
 from pathlib import Path
 from text_tools import read_list_table
@@ -14,37 +24,37 @@ def main():
     # suppress PDB warnings
     suppress_pdb_warnings = True
     
-    # directory of processed data files shared by all interactomes
-    dataDir = Path('../data') / 'processed'
+    # parent directory of all data files
+    dataDir = Path('../data')
+    
+    # parent directory of all processed data files
+    procDir = dataDir / 'processed'
     
     # directory of processed data files specific to interactome
-    interactomeDir = dataDir / interactome_name
-    
-    # directory to save output data files
-    outDir = dataDir / interactome_name
+    interactomeDir = procDir / interactome_name
     
     # directory for PDB structure files
     pdbDir = Path('/Volumes/MG_Samsung/pdb_files')
     
     # create output directories if not existing
-    if not outDir.exists():
-        os.makedirs(outDir)
+    if not procDir.exists():
+        os.makedirs(procDir)
     if not interactomeDir.exists():
         os.makedirs(interactomeDir)
     
     # input data files
-    ProteinSeqFile = dataDir / 'human_reference_sequences.pkl'    
-    chainSeqFile = dataDir / 'chain_sequences.pkl'
-    chainStrucResFile = dataDir / 'chain_strucRes.pkl'
-    chainInterfaceFile = dataDir / 'pdb_interfaces.txt'
+    ProteinSeqFile = procDir / 'human_reference_sequences.pkl'    
+    chainSeqFile = procDir / 'chain_sequences.pkl'
+    chainStrucResFile = procDir / 'chain_strucRes.pkl'
+    chainInterfaceFile = procDir / 'pdb_interfaces.txt'
     chainMapFile = interactomeDir / 'struc_interactome_pdb_chain_map.txt'
     natMutEdgotypeFile = interactomeDir / 'nondisease_mutation_edgotype_geometry.txt'
     disMutEdgotypeFile = interactomeDir / 'disease_mutation_edgotype_geometry.txt'
     interfaceAnnotatedInteractomeFile = interactomeDir / 'human_interface_annotated_interactome.txt'
     
     # output data files
-    natural_mutations_onchains_file = outDir / 'nondisease_mutations_onchains.txt'
-    disease_mutations_onchains_file = outDir / 'disease_mutations_onchains.txt'
+    natural_mutations_onchains_file = interactomeDir / 'nondisease_mutations_onchains.txt'
+    disease_mutations_onchains_file = interactomeDir / 'disease_mutations_onchains.txt'
     
     #------------------------------------------------------------------------------------
     # write edgetic mutations mapped onto PPI structural models to file

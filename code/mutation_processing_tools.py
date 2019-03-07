@@ -10,7 +10,10 @@ from simple_tools import (is_numeric,
                           find_substring,
                           find_masked_substring)
 
-def parse_dbsnp_flatfile_keys (inPath, encod, pausetime, outDir):
+def parse_dbsnp_flatfile_keys (inPath,
+                               outDir,
+                               encoding = 'us-ascii',
+                               pausetime = 0):
     
     RSkeys = set()
     SNPkeys = set()
@@ -19,7 +22,7 @@ def parse_dbsnp_flatfile_keys (inPath, encod, pausetime, outDir):
     CLINkeys = set()
     LOCkeys = set()
     
-    with io.open(inPath, 'r', encoding=encod) as fin:
+    with io.open(inPath, 'r', encoding=encoding) as fin:
         for numLines, line in enumerate(fin):
             if not (numLines % 1e6):
                 print('\t\t%dM lines parsed' % (numLines // 1e6))
@@ -61,7 +64,11 @@ def parse_dbsnp_flatfile_keys (inPath, encod, pausetime, outDir):
     with open(outDir / 'dbsnp_LOCkeys.pkl', 'wb') as fout:
         pickle.dump(LOCkeys, fout)
         
-def parse_dbsnp_flatfile (inPath, keyDir, encod, pausetime, outPath):
+def parse_dbsnp_flatfile (inPath,
+                          keyDir,
+                          outPath,
+                          encoding = 'us-ascii',
+                          pausetime = 0):
     
     with open(keyDir / 'dbsnp_RSkeys.pkl', 'rb') as f:
         RSkeys = pickle.load(f)
@@ -99,11 +106,11 @@ def parse_dbsnp_flatfile (inPath, keyDir, encod, pausetime, outPath):
     CLINinfo = {k:k for k in CLINkeys}
     LOCinfo = {k:k for k in LOCkeys}
     
-    with io.open(inPath, "r", encoding=encod) as fin:
+    with io.open(inPath, "r", encoding=encoding) as fin:
         for numLines, line in enumerate(fin):
             pass
                 
-    with io.open(inPath, "r", encoding=encod) as fin, io.open(outPath, "a") as fout:
+    with io.open(inPath, "r", encoding=encoding) as fin, io.open(outPath, "a") as fout:
         for i, line in enumerate(fin):
             if not (i % 1e6):
                 print('\t\t%dM out of %gM lines parsed' % (i // 1e6, numLines / 1e6))
@@ -170,7 +177,10 @@ def parse_dbsnp_flatfile (inPath, keyDir, encod, pausetime, outPath):
     print('\t%d lines parsed from ' % (i + 1) + str(inPath) +  
           'and written to file ' + str(outPath))
 
-def filter_and_merge_dbsnp_mutations (inDir, uniprotIDmapFile, pausetime, outPath):
+def filter_and_merge_dbsnp_mutations (inDir,
+                                      uniprotIDmapFile,
+                                      outPath,
+                                      pausetime = 0):
     
     with open(uniprotIDmapFile, 'rb') as f:
         uniprotIDmap = pickle.load(f)

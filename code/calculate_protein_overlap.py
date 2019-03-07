@@ -1,5 +1,10 @@
 #----------------------------------------------------------------------------------------
-# Calculate overlap in proteins covered by predictions and experiments
+# Calculate overlap in proteins covered by predictions and experiments.
+#
+# Run the following scripts before running this script:
+# - produce_data_mappings.py
+# - calculate_junk_content_geometry.py
+# - calculate_junk_content_experiment.py
 #----------------------------------------------------------------------------------------
 
 import os
@@ -10,7 +15,8 @@ from plot_tools import venn2_plot
 
 def main():
     
-    # reference interactome name. Options: 'HI-II-14' or 'IntAct'
+    # reference interactome name
+    # options: HI-II-14, IntAct
     interactome_name = 'HI-II-14'
     
     # show figures
@@ -19,14 +25,17 @@ def main():
     # interactome colors
     interactome_color = {'HI-II-14':'royalblue', 'IntAct':'limegreen'}
     
-    # directory of processed data files shared by all interactomes
-    dataDir = Path('../data') / 'processed'
+    # parent directory of all data files
+    dataDir = Path('../data')
     
-    # directory of processed data files specific to interactome
-    interactomeDir = dataDir / interactome_name
+    # parent directory of all processed data files
+    procDir = dataDir / 'processed'
+    
+    # directory of processed data files specific to structural interactome
+    interactomeDir = procDir / interactome_name
     
     # directory of processed data files specific to experiment
-    experimentDir = dataDir / 'experiment'
+    experimentDir = procDir / 'experiment'
     
     # figure directory
     figDir = Path('../figures') / interactome_name
@@ -36,11 +45,11 @@ def main():
         os.makedirs(figDir)
     
     # input data files
+    uniprotIDmapFile = procDir / 'to_human_uniprotID_map.pkl'
     natMutPredEdgotypeFile = interactomeDir / 'nondisease_mutation_edgotype_geometry.txt'
     disMutPredEdgotypeFile = interactomeDir / 'disease_mutation_edgotype_geometry.txt'
     natMutExpEdgotypeFile = experimentDir / 'nondisease_mutation_edgotype_experiment.txt'
     disMutExpEdgotypeFile = experimentDir / 'disease_mutation_edgotype_experiment.txt'
-    UniprotIDmapFile = dataDir / 'to_human_uniprotID_map.pkl'
     
     #----------------------------------------------------------------------------------------
     # process proteins covered by predictions
@@ -65,7 +74,7 @@ def main():
     expNaturalMutations = pd.read_table (natMutExpEdgotypeFile, sep='\t')
     expDiseaseMutations = pd.read_table (disMutExpEdgotypeFile, sep='\t')
     
-    with open(UniprotIDmapFile, 'rb') as f:
+    with open(uniprotIDmapFile, 'rb') as f:
         uniprotID = pickle.load(f)
     expNaturalMutations["protein"] = expNaturalMutations["Symbol"].apply(lambda x:
                                                                          uniprotID[x] if x in uniprotID 

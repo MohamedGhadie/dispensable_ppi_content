@@ -17,12 +17,20 @@ import numpy as np
 from pathlib import Path
 from interactome_tools import read_interface_annotated_interactome
 from mutation_processing_tools import remove_mutation_overlaps
-from mutation_interface_edgotype import mutation_PPI_interface_perturbations
+from mutation_interface_edgotype import mutation_PPI_interface_perturbations, create_perturbed_network
+from plot_tools import network_plot
 
 def main():
     
-    # reference interactome name. Options: 'HI-II-14' or 'IntAct'
-    interactome_name = 'IntAct'
+    # reference interactome name
+    # options: HI-II-14, IntAct
+    interactome_name = 'HI-II-14'
+    
+    # plot perturbed interactome and produce files for use by Cytoscape
+    plot_perturbations = True
+    
+    # show figures
+    showFigs = False
     
     # parent directory of all data files
     dataDir = Path('../data')
@@ -33,11 +41,11 @@ def main():
     # directory of processed data files specific to interactome
     interactomeDir = procDir / interactome_name
     
-    # create output directories if not existing
-    if not procDir.exists():
-        os.makedirs(procDir)
-    if not interactomeDir.exists():
-        os.makedirs(interactomeDir)
+    # directory of network perturbation output data files for use by Cytoscape
+    cytoscapeDir = interactomeDir / 'cytoscape'
+        
+    # figure directory
+    figDir = Path('../figures') / interactome_name
     
     # input data files
     naturalMutationsFile = procDir / 'dbsnp_mutations4.txt'
@@ -46,6 +54,18 @@ def main():
     
     # output data files
     uniqueMutationPerturbsFile = interactomeDir / 'unique_mutation_perturbs_geometry.pkl'
+    naturalMutEdgeFile = cytoscapeDir / 'nondiseaseMut_perturbed_edges_geometry'
+    naturalMutNodeFile = cytoscapeDir / 'nondiseaseMut_node_colors_geometry'
+    diseaseMutEdgeFile = cytoscapeDir / 'diseaseMut_perturbed_edges_geometry'
+    diseaseMutNodeFile = cytoscapeDir / 'diseaseMut_node_colors_geometry'
+    
+    # create output directories if not existing
+    if not interactomeDir.exists():
+        os.makedirs(interactomeDir)
+    if not cytoscapeDir.exists():
+        os.makedirs(cytoscapeDir)
+    if not figDir.exists():
+        os.makedirs(figDir)
     
     #------------------------------------------------------------------------------------
     # further process mutations
@@ -71,26 +91,26 @@ def main():
     # Consider PPI perturbations only for PPIs with this minimum number of partners
     minPartners = 1
     
-    annotatedInteractome = read_interface_annotated_interactome (interfaceAnnotatedInteractomeFile)
+    structuralInteractome = read_interface_annotated_interactome (interfaceAnnotatedInteractomeFile)
     
     print( '\n' + 'Predicting PPI perturbations based on geometry' )
     naturalMutation_perturbs = mutation_PPI_interface_perturbations(naturalMutations,
-                                                                    annotatedInteractome,
+                                                                    structuralInteractome,
                                                                     maxInterfaces = maxInterfaces,
                                                                     dist = numResFromInterface)
     diseaseMutation_perturbs = mutation_PPI_interface_perturbations(diseaseMutations,
-                                                                    annotatedInteractome,
+                                                                    structuralInteractome,
                                                                     maxInterfaces,
                                                                     dist = numResFromInterface)
     
     naturalPerturbs = naturalMutations.copy()
     naturalPerturbs["partners"], naturalPerturbs["perturbations"] = zip(* naturalMutation_perturbs)
     naturalPerturbs = naturalPerturbs[naturalPerturbs["partners"].apply(len) >= minPartners]
-        
+    
     diseasePerturbs = diseaseMutations.copy()
     diseasePerturbs["partners"], diseasePerturbs["perturbations"] = zip(* diseaseMutation_perturbs)
     diseasePerturbs = diseasePerturbs[diseasePerturbs["partners"].apply(len) >= minPartners]
-        
+    
     # drop duplicate mutations based on location, regardless of residue type 
     naturalPerturbs = naturalPerturbs.drop_duplicates(subset=["protein", "mut_position"]).reset_index(drop=True)
     diseasePerturbs = diseasePerturbs.drop_duplicates(subset=["protein", "mut_position"]).reset_index(drop=True)
@@ -101,6 +121,41 @@ def main():
     
     with open(uniqueMutationPerturbsFile, 'wb') as fOut:
         pickle.dump([naturalPerturbs, diseasePerturbs], fOut)
+    
+    #------------------------------------------------------------------------------------
+    # plot network perturbations
+    #------------------------------------------------------------------------------------
+    
+    if plot_perturbations:
+        print( '\n' + 'Creating network perturbed by non-disease mutations' )
+        nodes, edges, nodeColors, edgeColors = create_perturbed_network (structuralInteractome,
+                                                                         naturalPerturbs,
+                                                                         naturalMutEdgeFile,
+                                                                         naturalMutNodeFile)
+        network_plot (edges,
+                      nodes = nodes,
+                      nodeSizes = [20] * len(nodes),
+                      edgeWidth = 1,
+                      nodeColors = nodeColors,
+                      edgeColors = edgeColors,
+                      show = showFigs,
+                      figdir = figDir,
+                      figname = 'nondisease_mut_perturbed_interactome_geometry')
+    
+        print( '\n' + 'Creating network perturbed by disease mutations' )
+        nodes, edges, nodeColors, edgeColors = create_perturbed_network (structuralInteractome,
+                                                                         diseasePerturbs,
+                                                                         diseaseMutEdgeFile,
+                                                                         diseaseMutNodeFile)
+        network_plot (edges,
+                      nodes = nodes,
+                      nodeSizes = [20] * len(nodes),
+                      edgeWidth = 1,
+                      nodeColors = nodeColors,
+                      edgeColors = edgeColors,
+                      show = showFigs,
+                      figdir = figDir,
+                      figname = 'disease_mut_perturbed_interactome_geometry')
 
 if __name__ == "__main__":
     main()

@@ -200,7 +200,7 @@ def produce_fastsemsim_protein_gosim_dict (inPath,
                                            outPath,
                                            task = 'SS',
                                            ont_type = 'GeneOntology',
-                                           sim_measure = 'Resnik',
+                                           sim_measure = 'SimGIC',
                                            mix_method = 'BMA',
                                            cutoff = -1,
                                            remove_nan = True,
@@ -276,7 +276,10 @@ def produce_illumina_expr_dict (inPath,
     with open(outPath, 'wb') as fOut:
         pickle.dump(e, fOut)
 
-def produce_gtex_expr_dict (inDir, uniprotIDmapFile, outPath, uniprotIDlistFile = None):
+def produce_gtex_expr_dict (inDir,
+                            uniprotIDmapFile,
+                            outPath,
+                            uniprotIDlistFile = None):
     """Make a dictionary of protein tissue expression.
 
     Args:
@@ -293,32 +296,24 @@ def produce_gtex_expr_dict (inDir, uniprotIDmapFile, outPath, uniprotIDlistFile 
     else:
         uniprotIDlist = list(uniprotID.values())
     tissueExpr = {k:[] for k in uniprotIDlist}
-    filenames = [f for f in os.listdir(inDir) if f.endswith('.bed')]
+    filenames = [f for f in os.listdir(inDir) if f.endswith('.bed') and not f.startswith('.')]
     for i, filename in enumerate(filenames):
         print('processing file %d of %d: %s' % (i + 1, len(filenames), filename))
-        expr, processed, skipped = {}, 0, 0
+        expr = {}
         inPath = inDir / filename
-        with io.open(inPath, "r") as f:
+        with io.open(inPath, "r", errors='replace') as f:
             next(f)
-            while True:
-                try:
-                    line = f.readline()
-                    if line is '':
-                        break
-                    processed += 1
-                    linesplit = list(map(str.strip, line.strip().split('\t')))
-                    if len(linesplit) > 4:
-                        chr, start, end, gene_id = linesplit[:4]
-                        gene_id = gene_id.split('.')[0]
-                        if gene_id in uniprotID:
-                            id = uniprotID[gene_id]
-                            expr[id] = np.nanmean([float(e) for e in linesplit[4:] if is_numeric(e)])
-                except:
-                    skipped += 1
-                    pass
+            for j, line in enumerate(f):
+                linesplit = list(map(str.strip, line.strip().split('\t')))
+                if len(linesplit) > 4:
+                    chr, start, end, gene_id = linesplit[:4]
+                    gene_id = gene_id.split('.')[0]
+                    if gene_id in uniprotID:
+                        id = uniprotID[gene_id]
+                        expr[id] = np.nanmean([float(e) for e in linesplit[4:] if is_numeric(e)])
         for id in uniprotIDlist:
             tissueExpr[id].append(expr[id] if id in expr else np.nan)
-        print('%d lines processed. %d line not processed' % (processed, skipped))
+        print('%d lines processed' % (j + 1))
     for k, v in tissueExpr.items():
         tissueExpr[k] = np.array(v)
     with open(outPath, 'wb') as fOut:
@@ -401,7 +396,6 @@ def produce_fantom5_expr_dict (inPath,
             if line.startswith('##ParemeterValue[genome_assembly]='):
                 geneAssembly = line.strip().split('=')[1]
                 break
-    print(selcols)
     
     with io.open(inPath, "r") as f:
         i, hgncIndex, tpmIndex, tissues = -1, -1, [], []
@@ -414,7 +408,6 @@ def produce_fantom5_expr_dict (inPath,
                 if selcols:
                     for col in selcols:
                         if '.%s.%s' % (col, geneAssembly) in line:
-                            print(line)
                             tpmIndex.append(i)
                             tissues.append(col)
                             break
@@ -423,13 +416,13 @@ def produce_fantom5_expr_dict (inPath,
                     tissues.append(line.strip()[22:].split(']', maxsplit=1)[0])
             elif line.startswith('##ColumnVariables[hgnc_id]'):
                 hgncIndex = i
-    print('Columns selected: %s' % tissues)
+    print('%d columns selected: %s' % (len(tissues), tissues))
     
+    print('processing expression values')
     with io.open(inPath, "r") as f:
         expr, line = {}, '##'
         while line.startswith('##'):
             line = f.readline()
-        k = 0
         while True:
             if line is '':
                 break

@@ -36,28 +36,33 @@ import pickle
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from stat_tools import t_test, fisher_test, sderror, sderror_on_fraction
-from plot_tools import bar_plot, multi_histogram_plot
+from interactome_tools import read_interface_annotated_interactome
 from ddg_tools import read_protein_mutation_ddg
-from mutation_interface_edgotype import energy_based_perturbation
+from mutation_interface_edgotype import energy_based_perturbation, create_perturbed_network
+from stat_tools import t_test, fisher_test, sderror, sderror_on_fraction
+from plot_tools import bar_plot, multi_histogram_plot, network_plot
 
 def main():
     
-    # reference interactome name. Options: 'HI-II-14' or 'IntAct'
+    # reference interactome name
+    # options: HI-II-14, IntAct
     interactome_name = 'IntAct'
     
+    # structural interactome names
+    struc_name = {'HI-II-14':'Y2H-SI', 'IntAct':'IntAct-SI'}
+    
     # method of calculating mutation ∆∆G for which results will be used
-    # options: 'bindprofx' or 'foldx'
+    # options: bindprofx, foldx
     ddg_method = 'foldx'
     
     # Minimum reduction in binding free energy DDG required for interaction perturbation
     ddgCutoff = 0.5
     
-    # calculate confidence interval for the fraction of junk PPIs
-    computeConfidenceIntervals = True
-    
     # % confidence interval
     CI = 95
+    
+    # plot perturbed interactome and produce files for use by Cytoscape
+    plot_perturbations = True
     
     # show figures
     showFigs = False
@@ -71,26 +76,34 @@ def main():
     # directory of processed data files specific to interactome
     interactomeDir = procDir / interactome_name
     
+    # directory of network perturbation output data files for use by Cytoscape
+    cytoscapeDir = interactomeDir / 'cytoscape'
+    
     # figure directory
     figDir = Path('../figures') / interactome_name
-    
-    # create output directories if not existing
-    if not procDir.exists():
-        os.makedirs(procDir)
-    if not interactomeDir.exists():
-        os.makedirs(interactomeDir)
-    if not figDir.exists():
-        os.makedirs(figDir)
     
     # input data files
     geometryPerturbsFile = interactomeDir / 'unique_mutation_perturbs_geometry.pkl'
     natMutDDGinFile = interactomeDir / ('nondisease_mutations_%s_ddg.txt' % ddg_method)
     disMutDDGinFile = interactomeDir / ('disease_mutations_%s_ddg.txt' % ddg_method)
+    interfaceAnnotatedInteractomeFile = interactomeDir / 'human_interface_annotated_interactome.txt'
     
     # output data files
     natMutDDGoutFile = interactomeDir / ('nondisMut_%s_∆∆G_used.txt' % ddg_method)
     disMutDDGoutFile = interactomeDir / ('disMut_%s_∆∆G_used.txt' % ddg_method)
     physicsPerturbsFile = interactomeDir / ('mutation_perturbs_physics_%s.pkl' % ddg_method)
+    naturalMutEdgeFile = cytoscapeDir / ('nondiseaseMut_perturbed_edges_physics_%s' % ddg_method)
+    naturalMutNodeFile = cytoscapeDir / ('nondiseaseMut_node_colors_physics_%s' % ddg_method)
+    diseaseMutEdgeFile = cytoscapeDir / ('diseaseMut_perturbed_edges_physics_%s' % ddg_method)
+    diseaseMutNodeFile = cytoscapeDir / ('diseaseMut_node_colors_physics_%s' % ddg_method)
+    
+    # create output directories if not existing
+    if not interactomeDir.exists():
+        os.makedirs(interactomeDir)
+    if not cytoscapeDir.exists():
+        os.makedirs(cytoscapeDir)
+    if not figDir.exists():
+        os.makedirs(figDir)
     
     #------------------------------------------------------------------------------------
     # Fraction of mutation-targeted PPIs with ∆∆G exceeding a specified cutoff
@@ -164,12 +177,13 @@ def main():
     
     bar_plot([fracNatural_ddg, fracDisease_ddg],
              error = [fracNatural_ddg_error, fracDisease_ddg_error],
-             xlabels = ('PPIs with\nnon-disease\nmutations\nat interface',
-                        'PPIs with\ndisease\nmutations\nat interface'),
+             xlabels = ('%s PPIs\nwith non-disease\nmutations\nat interface' % struc_name[interactome_name],
+                        '%s PPIs\nwith disease\nmutations\nat interface' % struc_name[interactome_name]),
              ylabel = ('Fraction with ∆∆G > %.1f kcal/mol' % ddgCutoff),
              ylabels = [0, 0.2, 0.4, 0.6, 0.8],
              ylim = [0, 0.8],
-             colors = ['turquoise', 'orangered'],
+             colors = ['green', 'red'],
+             edgecolor = 'black',
              barwidth = 0.6,
              fontsize = 24,
              show = showFigs,
@@ -198,6 +212,43 @@ def main():
                                                                                         ddgCutoff)
     with open(physicsPerturbsFile, 'wb') as fOut:
         pickle.dump([naturalPerturbs, diseasePerturbs], fOut)
+    
+    #------------------------------------------------------------------------------------
+    # plot network perturbations
+    #------------------------------------------------------------------------------------
+    
+    if plot_perturbations:
+        structuralInteractome = read_interface_annotated_interactome (interfaceAnnotatedInteractomeFile)
+        
+        print( '\n' + 'Creating network perturbed by non-disease mutations' )
+        nodes, edges, nodeColors, edgeColors = create_perturbed_network (structuralInteractome,
+                                                                         naturalPerturbs,
+                                                                         naturalMutEdgeFile,
+                                                                         naturalMutNodeFile)
+        network_plot (edges,
+                      nodes = nodes,
+                      nodeSizes = [20] * len(nodes),
+                      edgeWidth = 1,
+                      nodeColors = nodeColors,
+                      edgeColors = edgeColors,
+                      show = showFigs,
+                      figdir = figDir,
+                      figname = 'nondisease_mut_perturbed_interactome_physics_%s' % ddg_method)
+    
+        print( '\n' + 'Creating network perturbed by disease mutations' )
+        nodes, edges, nodeColors, edgeColors = create_perturbed_network (structuralInteractome,
+                                                                         diseasePerturbs,
+                                                                         diseaseMutEdgeFile,
+                                                                         diseaseMutNodeFile)
+        network_plot (edges,
+                      nodes = nodes,
+                      nodeSizes = [20] * len(nodes),
+                      edgeWidth = 1,
+                      nodeColors = nodeColors,
+                      edgeColors = edgeColors,
+                      show = showFigs,
+                      figdir = figDir,
+                      figname = 'disease_mut_perturbed_interactome_physics_%s' % ddg_method)
 
 if __name__ == "__main__":
     main()

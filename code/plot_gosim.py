@@ -27,6 +27,9 @@ def main():
     # root ontology labels used to label output files and figures
     ont_abv = {'biological_process':'bp', 'molecular_function':'mf', 'cellular_component':'cc'}
     
+    # structural interactome names
+    struc_name = {'HI-II-14':'Y2H-SI', 'IntAct':'IntAct-SI'}
+    
     # interactome names
     interactome_names = ['Random interactions', 'Reference interactome', 'Structural interactome']
     
@@ -46,15 +49,15 @@ def main():
     interactomeDir = procDir / ref_interactome_name
     
     # figure directory
-    figDir = Path('../figures') / ref_interactome_name
+    figDir = Path('../figures') / ref_interactome_name / 'gosim'
+    
+    # input data files
+    gosimFiles = [interactomeDir / 'gosim' / ('allPPI_gosim_%s_%s.pkl' % (ont_abv[root], sim_measure)) for root in ont_root]
     
     # create output directories if not existing
     if not figDir.exists():
         os.makedirs(figDir)
     
-    # input data files
-    gosimFiles = [interactomeDir / ('allPPI_gosim_%s_%s.pkl' % (ont_abv[root], sim_measure)) for root in ont_root]
-                         
     allgosim = {}
     for root, gosimFile in zip(ont_root, gosimFiles):
         with open(gosimFile, 'rb') as f:
@@ -68,15 +71,17 @@ def main():
     
     multi_bar_plot(means,
                    errors = errors,
-                   xlabels = [r.replace('_','\n') for r in ont_root],
+                   xlabels = [r.title().replace('_','\n') for r in ont_root],
                    ylabel = 'Gene ontology similarity\nof interaction partners',
                    ylabels = [round(x, 1) for x in np.arange(0, 0.6, 0.1)],
                    colors = interactome_colors,
-                   #edgecolor = 'k',
+                   edgecolor = 'k',
                    barwidth = 0.2,
-                   bargap = 0.02,
+                   bargap = 0.03,
                    fontsize = 18,
-                   #leg = interactome_names,
+                   leg = ['Random pairs',
+                          '%s reference interactome' % ref_interactome_name,
+                          struc_name[ref_interactome_name]],
                    show = showFigs,
                    figdir = figDir,
                    figname = 'interactome_gosim_%s' % sim_measure)

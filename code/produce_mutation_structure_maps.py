@@ -15,7 +15,8 @@ from structural_annotation import write_mutation_structure_maps
 
 def main():
     
-    # reference interactome name. Options: 'HI-II-14' or 'IntAct'
+    # reference interactome name
+    # options: HI-II-14, IntAct
     interactome_name = 'HI-II-14'
     
     # allow PDB structure files to be downloaded
@@ -36,12 +37,6 @@ def main():
     # directory for PDB structure files
     pdbDir = Path('/Volumes/MG_Samsung/pdb_files')
     
-    # create output directories if not existing
-    if not procDir.exists():
-        os.makedirs(procDir)
-    if not interactomeDir.exists():
-        os.makedirs(interactomeDir)
-    
     # input data files
     ProteinSeqFile = procDir / 'human_reference_sequences.pkl'    
     chainSeqFile = procDir / 'chain_sequences.pkl'
@@ -55,6 +50,12 @@ def main():
     # output data files
     natural_mutations_onchains_file = interactomeDir / 'nondisease_mutations_onchains.txt'
     disease_mutations_onchains_file = interactomeDir / 'disease_mutations_onchains.txt'
+    
+    # create output directories if not existing
+    if not procDir.exists():
+        os.makedirs(procDir)
+    if not interactomeDir.exists():
+        os.makedirs(interactomeDir)
     
     #------------------------------------------------------------------------------------
     # write edgetic mutations mapped onto PPI structural models to file

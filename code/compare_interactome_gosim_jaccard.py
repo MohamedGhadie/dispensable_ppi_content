@@ -20,7 +20,8 @@ from plot_tools import bar_plot
 
 def main():
     
-    # reference interactome name. Options: 'HI-II-14' or 'IntAct'
+    # reference interactome name
+    # options: HI-II-14, IntAct
     interactome_name = 'IntAct'
     
     # show figures
@@ -41,14 +42,6 @@ def main():
     # figure directory
     figDir = Path('../figures') / interactome_name 
     
-    # create directories if not existing
-    if not procDir.exists():
-        os.makedirs(procDir)
-    if not interactomeDir.exists():
-        os.makedirs(interactomeDir)
-    if not figDir.exists():
-        os.makedirs(figDir)
-    
     # input data files
     extGOfile = extDir / 'goa_human.gaf'
     interactomeFile = interactomeDir / 'human_interactome.txt'
@@ -60,6 +53,14 @@ def main():
     BPfile = procDir / 'gop.pkl'
     CCfile = procDir / 'goc.pkl'
     GOSimFile = interactomeDir / 'goSim_reference_structural.pkl'
+    
+    # create directories if not existing
+    if not procDir.exists():
+        os.makedirs(procDir)
+    if not interactomeDir.exists():
+        os.makedirs(interactomeDir)
+    if not figDir.exists():
+        os.makedirs(figDir)
     
     #------------------------------------------------------------------------------------
     # load reference and structural interactomes

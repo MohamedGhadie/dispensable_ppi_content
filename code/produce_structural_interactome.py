@@ -14,19 +14,19 @@ import pandas as pd
 from random import sample
 from pathlib import Path
 from pdb_tools import download_structures
-from interactome_tools import (write_chain_annotated_interactome_to_excel,
+from text_tools import parse_blast_file
+from id_mapping import produce_protein_chain_dict
+from interactome_tools import (read_chain_annotated_interactome,
+                               write_chain_annotated_interactome_to_excel,
                                read_single_interface_annotated_interactome,
                                write_single_interface_annotated_interactome_to_excel)
-from structural_annotation import (parse_blast_file,
-                                   locate_alignments,
+from structural_annotation import (locate_alignments,
                                    filter_chain_annotations,
-                                   produce_protein_chain_dict,
                                    produce_alignment_evalue_dict,
                                    produce_chain_annotated_interactome,
                                    produce_interface_annotated_interactome,
                                    merge_interactome_interface_annotations,
                                    remove_duplicate_interface_annotations,
-                                   read_chain_annotated_interactome,
                                    filter_chain_annotations_by_protein)
 from plot_tools import network_plot
 
@@ -34,8 +34,18 @@ def main():
     
     # reference interactome name
     # options: HI-II-14, IntAct
-    interactome_name = 'HI-II-14'
-        
+    interactome_name = 'IntAct'
+    
+    # Maximum e-value cutoff to filter out protein-chain annotations
+    evalue = 1e-10
+    
+    # Minimum chain coverage fraction required for protein-chain annotation
+    chainCoverage = 0
+    
+    # If True, chain residue is required to match aligned protein residue for their 
+    # positions to be considered aligned
+    resMatch = False
+    
     # consider only interfaces with this minimum coverage fraction successfully mapped onto PPI
     mapCutoff = 0.5
     
@@ -58,6 +68,12 @@ def main():
     # download missing PDB structures whose chain pairs map onto interactome
     download_missing_structures = False
     
+    # allow downloading of PDB structures while constructing the structural interactome
+    allow_pdb_downloads = True
+    
+    # suppress PDB warnings when constructing the structural interactome
+    suppress_pdb_warnings = True
+    
     # show figures
     showFigs = False
     
@@ -65,7 +81,7 @@ def main():
     dataDir = Path('../data')
     
     # directory of data files from external sources
-    extDir = dataDir / 'external'
+    extDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data/external')
     
     # parent directory of all processed data files
     procDir = dataDir / 'processed'
@@ -79,6 +95,28 @@ def main():
     # directory for PDB structure files
     pdbDir = Path('/Volumes/MG_Samsung/pdb_files')
     
+    # input data files
+    pdbBlastFile = extDir / 'human_pdb_e-5'
+    proteinSeqFile = procDir / 'human_reference_sequences.pkl'
+    chainSeqFile = procDir / 'chain_sequences.pkl'
+    pdbChainsFile = procDir / 'pdb_seqres_chains.pkl'
+    chainListFile = procDir / 'pdb_seqres_chains.list'
+    chainStrucResFile = procDir / 'chain_strucRes.pkl'
+    interactomeFile = interactomeDir / 'human_interactome.txt'
+    
+    # output data files
+    chainMapFile1 = procDir / 'human_pdb_alignment.txt'
+    chainMapFile2 = procDir / 'human_pdb_chain_map.txt'
+    chainMapFile3 = procDir / 'human_pdb_chain_map_filtered.txt'
+    proteinChainsFile = procDir / 'protein_chains.pkl'
+    alignmentEvalueFile = procDir / 'human_protein_chain_min_alignment_evalues.pkl'
+    chainInterfaceFile = procDir / 'pdb_interfaces.txt'
+    chainAnnotatedInteractomeFile = interactomeDir / 'human_chain_annotated_interactome.txt'
+    interfaceAnnotatedInteractomeFile1 = interactomeDir / 'human_interface_annotated_interactome_withDuplicates.txt'
+    interfaceAnnotatedInteractomeFile = interactomeDir / 'human_interface_annotated_interactome.txt'
+    refInteractomeChainMapFile = interactomeDir / 'ref_interactome_pdb_chain_map.txt'
+    strucInteractomeChainMapFile = interactomeDir / 'struc_interactome_pdb_chain_map.txt'
+    
     if not procDir.exists():
         os.makedirs(procDir)
     if not interactomeDir.exists():
@@ -86,68 +124,52 @@ def main():
     if not figDir.exists():
         os.makedirs(figDir)
     
-    # input data files
-    pdbBlastFile = extDir / 'human_pdb_e-5'
-    chainStrucResFile = procDir / 'chain_strucRes.pkl'
-    proteinSeqFile = procDir / 'human_reference_sequences.pkl'
-    pdbChainsFile = procDir / 'pdb_seqres_chains.pkl'
-    chainListFile = procDir / 'pdb_seqres_chains.list'
-    interactomeFile = interactomeDir / 'human_interactome.txt'
+    interactome = pd.read_table( interactomeFile )
+    print( '\n' + 'Reference interactome:' )
+    print( '%d PPIs' % len(interactome) )
+    print( '%d proteins' % len(set(interactome[["Protein_1", "Protein_2"]].values.flatten())) )
     
-    # output data files
-    chainMapFile1 = procDir / 'human_pdb_alignment.txt'
-    chainMapFile2 = procDir / 'human_pdb_chain_map.txt'
-    chainMapFile = procDir / 'human_pdb_chain_map_filtered.txt'
-    proteinChainsFile = procDir / 'protein_chains.pkl'
-    alignmentEvalueFile = procDir / 'human_protein_chain_min_alignment_evalues.pkl'
-    chainInterfaceFile = procDir / 'pdb_interfaces.txt'
-    chainAnnotatedInteractomeFile = interactomeDir / 'human_chain_annotated_interactome.txt'
-    interactomeChainIDFile = interactomeDir / 'interactome_chainIDs.txt'
-    interactomePDBIDFile = interactomeDir / 'interactome_pdbIDs.txt'
-    interfaceAnnotatedInteractomeFile1 = interactomeDir / 'human_interface_annotated_interactome_withDuplicates.txt'
-    interfaceAnnotatedInteractomeFile = interactomeDir / 'human_interface_annotated_interactome.txt'
-    interactomeChainMapFile = interactomeDir / 'struc_interactome_pdb_chain_map.txt'
-    chainAnnotationsFile = interactomeDir / ( interactome_name + '_PPI_chain_annotations.xlsx' )
-    interfaceAnnotationsFile = interactomeDir / ( interactome_name + '_structural_interactome.xlsx' )
+    with open(proteinSeqFile, 'rb') as f:
+        proteinSeq = pickle.load(f)
+    print( '\n' + 'Protein sequences:' )
+    print( '%d sequences' % len(proteinSeq.keys()) )
     
-    # pausing time in seconds after processing each 50 million lines in BLAST file
-    pausetime = 0
+    with open(pdbChainsFile, 'rb') as f:
+        pdbChains = pickle.load(f)
+    with open(chainListFile, 'r') as f:
+        chainIDs = set(f.read().split())
+    print( '\n' + 'PDB structures available:' )
+    print( '%d structures' % len(pdbChains.keys()) )
+    print( '%d chains' % len(chainIDs) )
+    
     if not chainMapFile1.is_file():
-        print( 'Parsing BLAST protein-chain alignment file' )
-        parse_blast_file(pdbBlastFile,
-                         'us-ascii',
-                         pausetime,
-                         chainMapFile1)
+        print( 'parsing BLAST protein-chain alignment file' )
+        parse_blast_file (pdbBlastFile, chainMapFile1)
     
-    # If True, chain residue is required to match aligned protein residue for their 
-    # positions to be considered aligned
-    resMatch = False
-    # pausing time in seconds between locating alignments on queries and subjects
-    pausetime = 120
     if not chainMapFile2.is_file():
-        print( 'Locating aligned residues on protein and chain sequences' )
+        # pausing time in seconds between locating alignments on queries and subjects, occurs only once
+        pausetime = 120
+        print( 'locating aligned residues on protein and chain sequences' )
         locate_alignments(chainMapFile1,
                           chainMapFile2,
                           resMatch = resMatch,
                           pausetime = pausetime)
     
-    # Maximum e-value cutoff to filter out protein chain annotations
-    evalue = 1e-10
-    # Minimum chain coverage fraction required for annotation to be kept
-    chainCoverage = 0
-    if not chainMapFile.is_file():
-        print( 'Filtering chain annotations' )
+    if not chainMapFile3.is_file():
+        print( 'filtering chain annotations' )
         filter_chain_annotations(chainMapFile2,
                                  evalue,
                                  chainCoverage,
-                                 chainMapFile)
+                                 chainMapFile3)
     
-        print( 'Producing protein chains dictionary' )
-        produce_protein_chain_dict(chainMapFile,
+    if not proteinChainsFile.is_file():
+        print( 'producing protein chains dictionary' )
+        produce_protein_chain_dict(chainMapFile3,
                                    proteinChainsFile)
-        
-        print( 'Producing protein-chain alignment evalue dictionary' )
-        produce_alignment_evalue_dict (chainMapFile,
+    
+    if not alignmentEvalueFile.is_file():
+        print( 'producing protein-chain alignment evalue dictionary' )
+        produce_alignment_evalue_dict (chainMapFile3,
                                        alignmentEvalueFile,
                                        method = 'min')
     
@@ -158,18 +180,18 @@ def main():
                                             chainAnnotatedInteractomeFile,
                                             alignmentEvalueFile = alignmentEvalueFile)
     
-    chainAnnotatedInteractome = read_chain_annotated_interactome ( chainAnnotatedInteractomeFile )
-    uniqueChains = set()
-    for ls in chainAnnotatedInteractome["Mapping_chains"].values:
-        for pair in ls:
-            uniqueChains.update( pair )
-    uniqueChains = pd.Series( list( uniqueChains ) )
-    uniquePDBs = uniqueChains.apply(lambda x: x.split('_')[ 0 ]).drop_duplicates()
-    print( '\n' + 'Interactome chain-pair annotations:' )
-    print('%d unique chains in %d unique PDB structures' % (len(uniqueChains), len(uniquePDBs)))
-    uniqueChains.to_csv(interactomeChainIDFile, index=False)
-    uniquePDBs.to_csv(interactomePDBIDFile, index=False)
-    print('Unique chain IDs and unique PDB IDs written to file')
+    chainAnnotatedInteractome = read_chain_annotated_interactome(chainAnnotatedInteractomeFile)
+    interactomeProteins = list(set(chainAnnotatedInteractome[["Protein_1", "Protein_2"]].values.flatten()))
+    print( '\n' + 'Chain-annotated interactome:' )
+    print( '%d PPIs' % len(chainAnnotatedInteractome) )
+    print( '%d proteins' % len(interactomeProteins) )
+    print()
+    
+    if not refInteractomeChainMapFile.is_file():
+        print('filtering chain annotations by reference chain-annotated interactome proteins')
+        filter_chain_annotations_by_protein (chainMapFile3,
+                                             interactomeProteins,
+                                             refInteractomeChainMapFile)
     
     if download_missing_structures:
         print('downloading missing structures for PDB IDs mapping onto interactome')
@@ -180,7 +202,8 @@ def main():
         print('mapping chain interfaces onto chain-annotated interactome')
         produce_interface_annotated_interactome(chainAnnotatedInteractomeFile,
                                                 pdbDir,
-                                                chainMapFile,
+                                                chainSeqFile,
+                                                refInteractomeChainMapFile,
                                                 chainInterfaceFile,
                                                 chainStrucResFile,
                                                 maxInterfaces,
@@ -188,7 +211,9 @@ def main():
                                                 randChainPairs,
                                                 mapCutoff,
                                                 bindingDist,
-                                                interfaceAnnotatedInteractomeFile1)
+                                                interfaceAnnotatedInteractomeFile1,
+                                                downloadPDB = allow_pdb_downloads,
+                                                suppressWarnings = suppress_pdb_warnings)
         if mergeInterfaces:
             print('merging interface annotations for each PPI')
             merge_interactome_interface_annotations(interfaceAnnotatedInteractomeFile1,
@@ -198,57 +223,25 @@ def main():
             remove_duplicate_interface_annotations(interfaceAnnotatedInteractomeFile1,
                                                    interfaceAnnotatedInteractomeFile)
     
-    interactome = pd.read_table( interactomeFile )
-    print( '\n' + 'Reference interactome:' )
-    print( '%d PPIs' % len( interactome ) )
-    print( '%d proteins' % len( set( interactome[ ["Protein_1", "Protein_2"] ].values.flatten() ) ) )
-    
-    with open(proteinSeqFile, 'rb') as f:
-        proteinSeq = pickle.load(f)
-    print( '\n' + 'Protein sequences:' )
-    print( '%d sequences' % len( proteinSeq.keys() ) )
-    
-    with open(pdbChainsFile, 'rb') as f:
-        pdbChains = pickle.load(f)
-    with open(chainListFile, 'r') as f:
-        chainIDs = set( f.read().split() )
-    print( '\n' + 'PDB structures available:' )
-    print( '%d structures' % len( pdbChains.keys() ) )
-    print( '%d chains' % len( chainIDs ) )
-    
-    chainAnnotatedInteractome = read_chain_annotated_interactome( chainAnnotatedInteractomeFile )
-    print( '\n' + 'Chain-annotated interactome:' )
-    print( '%d PPIs' % len( chainAnnotatedInteractome ) )
-    print( '%d proteins' % len( set( chainAnnotatedInteractome[ ["Protein_1", "Protein_2"] ].values.flatten() ) ) )
-    
-    write_chain_annotated_interactome_to_excel (
-                    chainAnnotatedInteractome,
-                    chainAnnotationsFile,
-                    sheet_name = 'PPI_chain_annotations')
-    
     structuralInteractome = read_single_interface_annotated_interactome( interfaceAnnotatedInteractomeFile )
     interactomeProteins = list(set(structuralInteractome[["Protein_1", "Protein_2"]].values.flatten()))
     print( '\n' + 'Structural interactome:' )
     print( '%d PPIs' % len(structuralInteractome) )
     print( '%d proteins' % len(interactomeProteins) )
+    print()
     
-    write_single_interface_annotated_interactome_to_excel (
-                    structuralInteractome,
-                    interfaceAnnotationsFile,
-                    sheet_name = interactome_name + '_structural_interactome')
+    if not strucInteractomeChainMapFile.is_file():
+        print('filtering chain annotations by structural interactome proteins')
+        filter_chain_annotations_by_protein (chainMapFile3,
+                                             interactomeProteins,
+                                             strucInteractomeChainMapFile)
     
-    print( '\n' + 'Plotting structural interactome' )
+    print('plotting structural interactome')
     edges = list(structuralInteractome[["Protein_1", "Protein_2"]].values)
     network_plot(edges,
                  show = showFigs,
                  figdir = figDir,
                  figname = 'structural_interactome')
-    
-    if not interactomeChainMapFile.is_file():
-        print('\n' + 'filtering chain annotations by structural interactome proteins')
-        filter_chain_annotations_by_protein (chainMapFile,
-                                             interactomeProteins,
-                                             interactomeChainMapFile)
 
 if __name__ == "__main__":
     main()

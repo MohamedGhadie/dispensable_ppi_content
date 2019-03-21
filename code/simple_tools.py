@@ -1,7 +1,7 @@
 import os
 import re
 from pathlib import Path
-from random import choices
+from random import choice
 
 def valid_uniprot_id(s):
     """Check if a string is a valid UniProt accession ID
@@ -361,6 +361,10 @@ def merge_list_pairs (ls):
 
 def sample_random_pairs (ls, sampleSize):
     
-    sample1 = choices(ls, k = sampleSize)
-    sample2 = choices(ls, k = sampleSize)
-    return list(zip(sample1, sample2))
+    pairs, n = [], 0
+    while n < sampleSize:
+        p1, p2 = choice(ls), choice(ls)
+        if p1 != p2:
+            pairs.append((p1, p2))
+            n += 1
+    return pairs

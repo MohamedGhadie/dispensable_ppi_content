@@ -24,10 +24,6 @@ def main():
     
     # parent directory of all processed data files
     procDir = dataDir / 'processed'
-        
-    # create output directories if not existing
-    if not procDir.exists():
-        os.makedirs(procDir)
     
     # number of residues included in each side of mutation flanking sequence
     flankingSeqSideLen = 10
@@ -46,6 +42,10 @@ def main():
     clinvarMutationsFile4 = procDir / 'clinvar_mutations4.txt'
     clinvarMutationsFile5 = procDir / 'clinvar_mutations5.txt'
     clinvarMutationsFile6 = procDir / 'clinvar_mutations6.txt'
+    
+    # create output directories if not existing
+    if not procDir.exists():
+        os.makedirs(procDir)
     
     #------------------------------------------------------------------------------------
     # process disease mutations

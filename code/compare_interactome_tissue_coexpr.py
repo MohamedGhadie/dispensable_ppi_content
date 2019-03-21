@@ -31,7 +31,7 @@ def main():
     
     # tissue expression database name
     # options: Illumina, GTEx, HPA, Fantom5
-    expr_db = 'HPA'
+    expr_db = 'Fantom5'
     
     # minimum number of tissue expression values required for protein pair tissue
     # co-expression to be considered
@@ -50,24 +50,19 @@ def main():
     dataDir = Path('../data')
     
     # directory of data files from external sources
-    extDir = dataDir / 'external'
+    extDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data/external')
     
     # parent directory of all processed data files
     procDir = dataDir / 'processed'
     
     # directory of processed data files specific to interactome
     interactomeDir = procDir / interactome_name
+    
+    # directory of tissue coexpression output data files
+    coexprDir = interactomeDir / 'coexpr'
         
     # figure directory
-    figDir = Path('../figures') / interactome_name 
-    
-    # create directories if not existing
-    if not interactomeDir.exists():
-        os.makedirs(interactomeDir)
-    if not outDir.exists():
-        os.makedirs(outDir)
-    if not figDir.exists():
-        os.makedirs(figDir)
+    figDir = Path('../figures') / interactome_name / 'coexpr'
     
     # input data files
     illuminaExprFile = extDir / 'E-MTAB-513.tsv.txt'
@@ -82,7 +77,13 @@ def main():
     
     # output data files
     proteinExprFile = procDir / ('protein_expr_%s.pkl' % expr_db)
-    coexprFile = interactomeDir / ('interactome_coexpr_%s.pkl' % expr_db)
+    coexprFile = coexprDir / ('interactome_coexpr_%s.pkl' % expr_db)
+    
+    # create directories if not existing
+    if not coexprDir.exists():
+        os.makedirs(coexprDir)
+    if not figDir.exists():
+        os.makedirs(figDir)
     
     #------------------------------------------------------------------------------------
     # load reference and structural interactomes
@@ -198,9 +199,9 @@ def main():
     
     # print results
     print('\n' + 'Mean tissue co-expression for interaction partners:')
-    print('Random interactions: %f (SE = %g, n = %d)' % (np.mean(randCoexpr),
-                                                         sderror(randCoexpr),
-                                                         len(randCoexpr)))
+    print('Random pairs: %f (SE = %g, n = %d)' % (np.mean(randCoexpr),
+                                                  sderror(randCoexpr),
+                                                  len(randCoexpr)))
     print('Reference interactome: %f (SE = %g, n = %d)' % (np.mean(refCoexpr),
                                                            sderror(refCoexpr),
                                                            len(refCoexpr)))
@@ -209,9 +210,9 @@ def main():
                                                             len(strucCoexpr)))
     print('\n' + 'Statistical significance')
     print('reference interactome vs random interactions:')
-    bootstrap_test(refCoexpr, randCoexpr, iter = 10000)
+    bootstrap_test(refCoexpr, randCoexpr, iter = 100000)
     print('structural interactome vs reference interactome:')
-    bootstrap_test(strucCoexpr, refCoexpr, iter = 10000)
+    bootstrap_test(strucCoexpr, refCoexpr, iter = 100000)
     
     # plot results
     bar_plot([ np.mean(randCoexpr), np.mean(refCoexpr), np.mean(strucCoexpr) ],

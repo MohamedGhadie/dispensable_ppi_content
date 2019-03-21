@@ -18,11 +18,11 @@ def main():
     # reference interactome name
     interactome_name = 'experiment'
     
-    # calculate confidence interval for the fraction of junk PPIs
-    computeConfidenceIntervals = True
-    
     # treat experiment quasi-null mutation as edgetic
     consider_exp_QuasiNull_perturbs = False
+    
+    # calculate confidence interval for the fraction of junk PPIs
+    computeConfidenceIntervals = True
     
     # % confidence interval
     CI = 95
@@ -34,7 +34,7 @@ def main():
     dataDir = Path('../data')
     
     # directory of data files from external sources
-    extDir = dataDir / 'external'
+    extDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data/external')
     
     # parent directory of all processed data files
     procDir = dataDir / 'processed'
@@ -43,10 +43,19 @@ def main():
     interactomeDir = procDir / interactome_name
     
     # figure directory
+    figDir = Path('../figures') / interactome_name
+    
     if consider_exp_QuasiNull_perturbs:
-        figDir = Path('../figures') / interactome_name / 'exp_QuasiNull_perturbs_considered'
-    else:
-        figDir = Path('../figures') / interactome_name
+        interactomeDir = interactomeDir / 'quasiNull_perturbs_considered'
+        figDir = figDir / 'quasiNull_perturbs_considered'
+    
+    # input data files
+    edgotypeFile = extDir / "Sahni_2015_Table_S3.xlsx"
+    
+    # output data files
+    natMutEdgotypeFile = interactomeDir / 'nondisease_mutation_edgotype_experiment.txt'
+    disMutEdgotypeFile = interactomeDir / 'disease_mutation_edgotype_experiment.txt'
+    junkPPIFile = interactomeDir / 'fraction_junk_PPIs_experiment.pkl'
     
     # create output directories if not existing
     if not procDir.exists():
@@ -56,14 +65,6 @@ def main():
     if not figDir.exists():
         os.makedirs(figDir)
     
-    # input data files
-    edgotypeFile = extDir / "Sahni_2015_Table_S3.xlsx"
-    
-    # output data files
-    natMutEdgotypeFile = interactomeDir / 'nondisease_mutation_edgotype_experiment.txt'
-    disMutEdgotypeFile = interactomeDir / 'disease_mutation_edgotype_experiment.txt'
-    junkPPIFile = interactomeDir / 'fraction_junk_PPIs_experiment.pkl'
-                   
     #------------------------------------------------------------------------------------
     # process experimental edgotype data
     #------------------------------------------------------------------------------------
@@ -156,15 +157,15 @@ def main():
     
     pie_plot([numNaturalMut_nonedgetic, numNaturalMut_edgetic],
              angle = 90,
-             #labels = ['Nonedgetic', 'Edgetic'],
-             colors = ['thistle', 'mediumslateblue'],
+             colors = ['mediumslateblue', 'red'],
+             edgewidth = 2,
              show = showFigs,
              figdir = figDir,
              figname = 'non_disease_edgetic_mutations_exp')
     pie_plot([numDiseaseMut_nonedgetic, numDiseaseMut_edgetic],
              angle = 90,
-             #labels = ['Nonedgetic', 'Edgetic'],
-             colors = ['thistle', 'mediumslateblue'],
+             colors = ['mediumslateblue', 'red'],
+             edgewidth = 2,
              show = showFigs,
              figdir = figDir,
              figname = 'disease_edgetic_mutations_exp')

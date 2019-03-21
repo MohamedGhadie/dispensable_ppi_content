@@ -25,7 +25,7 @@ def main():
     
     # method of calculating mutation ∆∆G for which results will be used
     # options: bindprofx, foldx
-    ddg_method = 'bindprofx'
+    ddg_method = 'foldx'
     
     # set to True to calculate junk PPI content using fraction of mono-edgetic mutations 
     # instead of fraction of edgetic mutations
@@ -55,6 +55,14 @@ def main():
     # figure directory
     figDir = Path('../figures') / interactome_name
     
+    # input data files
+    physicsPerturbsFile = interactomeDir / ('mutation_perturbs_physics_%s.pkl' % ddg_method)
+    
+    # output data files
+    natMutEdgotypeFile = interactomeDir / ('nondisease_mutation_edgotype_physics_%s.txt' % ddg_method)
+    disMutEdgotypeFile = interactomeDir / ('disease_mutation_edgotype_physics_%s.txt' % ddg_method)
+    junkPPIFile = interactomeDir / ('fraction_junk_PPIs_physics_%s%s.pkl' % (ddg_method, '_monoedgetic' if mono_edgetic else ''))
+    
     # create output directories if not existing
     if not procDir.exists():
         os.makedirs(procDir)
@@ -62,14 +70,6 @@ def main():
         os.makedirs(interactomeDir)
     if not figDir.exists():
         os.makedirs(figDir)
-        
-    # input data files
-    physicsPerturbsFile = interactomeDir / ('mutation_perturbs_physics_%s.pkl' % ddg_method)
-    
-    # output data files
-    natMutEdgotypeFile = interactomeDir / ('nondisease_mutation_edgotype_physics_%s.txt' % ddg_method)
-    disMutEdgotypeFile = interactomeDir / ('disease_mutation_edgotype_physics_%s.txt' % ddg_method)
-    junkPPIFile = interactomeDir / ('fraction_junk_PPIs_physics_%s_%s.pkl' % (ddg_method, 'monoedgetic' if mono_edgetic else ''))
     
     #------------------------------------------------------------------------------------
     # Load interactome perturbations
@@ -83,17 +83,21 @@ def main():
     #------------------------------------------------------------------------------------
     
     print( '\n' + 'Labeling mutation edgotypes' )
+    print( '%d non-disease mutations' % len(naturalPerturbs) )
+    print( '%d disease mutations' % len(diseasePerturbs) )
+    
     naturalPerturbs["edgotype"] = assign_edgotypes (naturalPerturbs["perturbations"].tolist(),
                                                     mono_edgetic = False)
     diseasePerturbs["edgotype"] = assign_edgotypes (diseasePerturbs["perturbations"].tolist(),
                                                     mono_edgetic = False)
     
+    nat_mono_edgotype = assign_edgotypes (naturalPerturbs["perturbations"].tolist(), mono_edgetic = True)
+    dis_mono_edgotype = assign_edgotypes (diseasePerturbs["perturbations"].tolist(), mono_edgetic = True)
+    
     if mono_edgetic:
         print( '\n' + 'Labeling mono-edgetic mutations' )
-        naturalPerturbs["mono-edgotype"] = assign_edgotypes (naturalPerturbs["perturbations"].tolist(),
-                                                             mono_edgetic = True)
-        diseasePerturbs["mono-edgotype"] = assign_edgotypes (diseasePerturbs["perturbations"].tolist(),
-                                                             mono_edgetic = True)
+        naturalPerturbs["mono-edgotype"] = nat_mono_edgotype
+        diseasePerturbs["mono-edgotype"] = dis_mono_edgotype
     
     # write predicted mutation edgotypes to tab-delimited file
     write_list_table (naturalPerturbs, ["partners", "perturbations"], natMutEdgotypeFile)
@@ -139,18 +143,35 @@ def main():
     fisher_test([numNaturalMut_edgetic, numNaturalMut_nonedgetic],
                 [numDiseaseMut_edgetic, numDiseaseMut_nonedgetic])
     
+    if not mono_edgetic:
+        print( '\n' + 'Fraction of mono-edgetic mutations among non-disease edgetic mutations:' ) 
+        print( '%.3f (%d out of %d)' % (nat_mono_edgotype.count('mono-edgetic') / numNaturalMut_edgetic,
+                                        nat_mono_edgotype.count('mono-edgetic'),
+                                        numNaturalMut_edgetic) )
+        print( 'Fraction of mono-edgetic mutations among disease edgetic mutations:' )
+        print( '%.3f (%d out of %d)' % (dis_mono_edgotype.count('mono-edgetic') / numDiseaseMut_edgetic,
+                                        dis_mono_edgotype.count('mono-edgetic'),
+                                        numDiseaseMut_edgetic) )
+        print( 'Fraction of mono-edgetic mutations among all edgetic mutations:' )
+        print( '%.3f (%d out of %d)' % ((nat_mono_edgotype.count('mono-edgetic') + dis_mono_edgotype.count('mono-edgetic')) 
+                                        / (numNaturalMut_edgetic + numDiseaseMut_edgetic),
+                                        nat_mono_edgotype.count('mono-edgetic') + dis_mono_edgotype.count('mono-edgetic'),
+                                        numNaturalMut_edgetic + numDiseaseMut_edgetic) )
+    
     pie_plot([numNaturalMut_nonedgetic, numNaturalMut_edgetic],
              angle = 90,
-             colors = ['thistle', 'mediumslateblue'],
+             colors = ['mediumslateblue', 'red'],
+             edgewidth = 2,
              show = showFigs,
              figdir = figDir,
-             figname = 'non_disease_%s_mutations_physics' % label)
+             figname = 'non_disease_%s_mutations_physics_%s' % (label, ddg_method))
     pie_plot([numDiseaseMut_nonedgetic, numDiseaseMut_edgetic],
              angle=90,
-             colors = ['thistle', 'mediumslateblue'],
+             colors = ['mediumslateblue', 'red'],
+             edgewidth = 2,
              show = showFigs,
              figdir = figDir,
-             figname = 'disease_%s_mutations_physics' % label)
+             figname = 'disease_%s_mutations_physics_%s' % (label, ddg_method))
     
     #------------------------------------------------------------------------------------
     # apply Bayes' theorem to calculate the fraction of PPIs that are junk, i.e., 

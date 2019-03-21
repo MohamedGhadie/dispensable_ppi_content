@@ -218,7 +218,6 @@ def write_interactome_sequences (inPath,
         outPath(str): file directory to write protein sequences to.
 
     """
-    print('\twriting interactome protein sequences to file')
     interactome = pd.read_table(inPath, sep='\t')
     sequences = pd.read_table(sequenceFile, sep='\t')
     proteins = list(set(interactome[["Protein_1", "Protein_2"]].values.flatten()))

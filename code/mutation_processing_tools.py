@@ -22,11 +22,15 @@ def parse_dbsnp_flatfile_keys (inPath,
     CLINkeys = set()
     LOCkeys = set()
     
+    with io.open(inPath, "r", encoding=encoding) as fin:
+        for numLines, _ in enumerate(fin):
+            pass
+    
     with io.open(inPath, 'r', encoding=encoding) as fin:
-        for numLines, line in enumerate(fin):
-            if not (numLines % 1e6):
-                print('\t\t%dM lines parsed' % (numLines // 1e6))
-            if not ((numLines+1) % 50e6):
+        for i, line in enumerate(fin):
+            if not (i % 1e6):
+                print('\t\t%dM out of %fM lines parsed' % (i // 1e6, numLines / 1e6), end='\r', flush=True)
+            if not ((i+1) % 50e6):
                 print('\t\tpausing for %d seconds' % pausetime)
                 time.sleep(pausetime)
             if line.startswith(('rs','SNP','VAL','GMAF','CLINSIG','LOC')):
@@ -113,7 +117,7 @@ def parse_dbsnp_flatfile (inPath,
     with io.open(inPath, "r", encoding=encoding) as fin, io.open(outPath, "a") as fout:
         for i, line in enumerate(fin):
             if not (i % 1e6):
-                print('\t\t%dM out of %gM lines parsed' % (i // 1e6, numLines / 1e6))
+                print('\t\t%dM out of %fM lines parsed' % (i // 1e6, numLines / 1e6), end='\r', flush=True)
             if not ((i+1) % 50e6):
                 print('\t\tpausing for %d seconds' % pausetime)
                 time.sleep(pausetime)

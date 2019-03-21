@@ -34,19 +34,10 @@ def main():
     interactomeDir = procDir / interactome_name
     
     # figure directory
-    figDir = Path('../figures') / interactome_name 
-    
-    # create directories if not existing
-    if not procDir.exists():
-        os.makedirs(procDir)
-    if not interactomeDir.exists():
-        os.makedirs(interactomeDir)
-    if not figDir.exists():
-        os.makedirs(figDir)
+    figDir = Path('../figures') / interactome_name
     
     # input data files
-    GeneMapFile = procDir / 'to_human_geneName_map.pkl'
-    ProteinSeqFile = procDir / 'human_reference_sequences.pkl'
+    proteinSeqFile = procDir / 'human_reference_sequences.pkl'
     chainListFile = procDir / 'pdb_seqres_chains.list'
     pdbChainsFile = procDir / 'pdb_seqres_chains.pkl'
     interactomeFile = interactomeDir / 'human_interactome.txt'
@@ -57,37 +48,43 @@ def main():
     ppisPerPDBfile = interactomeDir / 'numPPIsPerPDB.pkl'
     interfaceFile = interactomeDir / 'proteinInterfaces.pkl'
     
+    # create directories if not existing
+    if not interactomeDir.exists():
+        os.makedirs(interactomeDir)
+    if not figDir.exists():
+        os.makedirs(figDir)
+    
     #------------------------------------------------------------------------------------
     # load reference and structural interactomes
     #------------------------------------------------------------------------------------
     
     interactome = pd.read_table (interactomeFile)
     print( '\n' + 'reference interactome:' )
-    print( '%d PPIs' % len( interactome ) )
-    print( '%d proteins' % len( set(interactome[["Protein_1", "Protein_2"]].values.flatten()) ) )
+    print( '%d PPIs' % len(interactome) )
+    print( '%d proteins' % len(set(interactome[["Protein_1", "Protein_2"]].values.flatten())) )
     
-    with open(ProteinSeqFile, 'rb') as f:
+    with open(proteinSeqFile, 'rb') as f:
         proteinSeq = pickle.load(f)
     print( '\n' + 'Protein sequences:' )
-    print( '%d sequences' % len( proteinSeq.keys() ) )
+    print( '%d sequences' % len(proteinSeq.keys()) )
     
     with open(pdbChainsFile, 'rb') as f:
         pdbChains = pickle.load(f)
     with open(chainListFile, 'r') as f:
         chainIDs = set(f.read().split())
     print( '\n' + 'PDB structures available:' )
-    print( '%d structures' % len( pdbChains.keys() ) )
-    print( '%d chains' % len( chainIDs ) )
+    print( '%d structures' % len(pdbChains.keys()) )
+    print( '%d chains' % len(chainIDs) )
     
     chainAnnotatedInteractome = read_chain_annotated_interactome (chainAnnotatedInteractomeFile)
     print( '\n' + 'chain-annotated interactome:' )
-    print( '%d PPIs' % len( chainAnnotatedInteractome ) )
-    print( '%d proteins' % len( set(chainAnnotatedInteractome[["Protein_1", "Protein_2"]].values.flatten()) ) )
+    print( '%d PPIs' % len(chainAnnotatedInteractome) )
+    print( '%d proteins' % len(set(chainAnnotatedInteractome[["Protein_1", "Protein_2"]].values.flatten())) )
     
     structuralInteractome = read_single_interface_annotated_interactome (structuralInteractomeFile)
     print( '\n' + 'interface-annotated interactome:' )
-    print( '%d PPIs' % len( structuralInteractome ) )
-    print( '%d proteins' % len( set(structuralInteractome[["Protein_1", "Protein_2"]].values.flatten()) ) )
+    print( '%d PPIs' % len(structuralInteractome) )
+    print( '%d proteins' % len(set(structuralInteractome[["Protein_1", "Protein_2"]].values.flatten())) )
 
     #------------------------------------------------------------------------------------
     # Calculate distribution of number of PPIs modeled per PDB model in the
@@ -105,7 +102,6 @@ def main():
     
     pdbIDs = list(ppisPerPDB.keys())
     num_ppisPerPDB = [len(ppisPerPDB[id]) for id in pdbIDs]
-    
     with open(ppisPerPDBfile, 'wb') as fout:
         pickle.dump(num_ppisPerPDB, fout)
     
@@ -117,7 +113,6 @@ def main():
           % (num_ppisPerPDB_toplot[0], sum(num_ppisPerPDB_toplot)))
     
     bar_plot(num_ppisPerPDB_toplot,
-             [],
              xlabels = list(map(str, np.arange(1, maxVal))) + [ str(maxVal) + '+'],
              xlabel = 'Number of PPIs modeled by PDB structure',
              ylabel = 'Number of PDB structures',
@@ -133,27 +128,19 @@ def main():
     #------------------------------------------------------------------------------------
          
     # compile interfaces for all interacting proteins
-#     interfaces = pd.DataFrame(columns = ["Protein", "Interface"])
-#     c = -1
     interfaces = {}
     for _, row in structuralInteractome.iterrows():
         interface_1, interface_2 = row.Interfaces
         interfaces[(row.Protein_1, row.Protein_2)] = interface_1
         interfaces[(row.Protein_2, row.Protein_1)] = interface_2
-#         c += 1
-#         interfaces.loc[c] = row.Protein_1, interface_1
-#         c += 1
-#         interfaces.loc[c] = row.Protein_2, interface_2
-    
-    # calculate number of interface residues per interacting protein
     with open(interfaceFile, 'wb') as fout:
         pickle.dump(interfaces, fout)
     
-    #interfaceLength = interfaces["Interface"].apply(len).tolist()
+    # calculate number of interface residues per interacting protein
     interfaceLength = [len(i) for i in interfaces.values()]
     print('Mean interface length = %.1f residues' % np.mean(interfaceLength))
-    multi_histogram_plot ([interfaceLength],
-                          ['b'],
+    multi_histogram_plot (interfaceLength,
+                          colors = 'b',
                           xlabel = 'Number of interfacial residues',
                           ylabel = 'Number of proteins',
                           edgecolor = 'k',
@@ -165,14 +152,12 @@ def main():
                           figname = 'interface_length')
     
     # calculate ratio of interface residues per interacting protein
-    with open(ProteinSeqFile, 'rb') as f:
+    with open(proteinSeqFile, 'rb') as f:
         proteinSeq = pickle.load(f)
-#     interfaceRatio = ( interfaces["Interface"].apply(len) / 
-#                        interfaces["Protein"].apply(lambda x: len(proteinSeq[x])) ).tolist()
     interfaceRatio = [len(i)/len(proteinSeq[p]) for (p, _), i in interfaces.items()]
     print('Mean interface fraction of protein sequence = %.1f%%' % (100 * np.mean(interfaceRatio)))
-    multi_histogram_plot ([interfaceRatio],
-                          ['g'],
+    multi_histogram_plot (interfaceRatio,
+                          colors = 'g',
                           xlabel = 'Fraction of interfacial residues',
                           ylabel = 'Number of proteins',
                           edgecolor = 'k',

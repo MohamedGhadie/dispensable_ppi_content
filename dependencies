@@ -1,14 +1,17 @@
-# HI-II-14 human interactome dataset
-wget http://interactome.dfci.harvard.edu/H_sapiens/download/HI-II-14.tsv
-
-# IntAct interactome dataset
-wget https://www.ebi.ac.uk/intact/downloads/intact.zip
+mkdir myproject
+cd myproject
+mkdir data
+cd data
+mkdir external
+cd external
 
 # UniProt human reference sequences
 wget ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/reference_proteomes//Eukaryota/UP000005640_9606.fasta.gz
+gunzip UP000005640_9606.fasta.gz
 
 # UniProt ID mapping
 wget ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping//by_organism/HUMAN_9606_idmapping.dat.gz
+gunzip HUMAN_9606_idmapping.dat.gz
 
 # UniProt reviewed human proteome list
 wget 'http://www.uniprot.org/uniprot/?sort=&desc=&compress=no&query=&fil=reviewed:yes%20AND%20organism:%22Homo%20sapiens%20(Human)%20[9606]%22%20AND%20proteome:up000005640&format=list&force=yes' -O uniprot_reviewed_human_proteome.list
@@ -16,34 +19,99 @@ wget 'http://www.uniprot.org/uniprot/?sort=&desc=&compress=no&query=&fil=reviewe
 # RefSeqGene mapping
 wget ftp://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/RefSeqGene/LRG_RefSeqGene
 
-# PDB seqres
+# PDB sequences
 wget ftp://ftp.wwpdb.org/pub/pdb/derived_data/pdb_seqres.txt
 wget https://cdn.rcsb.org/etl/kabschSander/ss_dis.txt.gz
+gunzip ss_dis.txt.gz
 
-# ClinVar mutations
-wget ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar//tab_delimited/variant_summary.txt.gz
+# HI-II-14 human interactome dataset
+wget http://interactome.dfci.harvard.edu/H_sapiens/download/HI-II-14.tsv
 
-# dbSNP mutations
-wget ftp://ftp.ncbi.nih.gov/snp//organisms/human_9606_b150_GRCh38p7/ASN1_flat/ds_flat_ch1.flat.gz
+# IntAct interactome dataset
+wget ftp://ftp.ebi.ac.uk/pub/databases/intact/current/psimitab/intact.zip
+tar -xzf intact.zip
+rm intact.zip intact_negative.txt
 
 # Sahni et al. (2015) experimental dataset
-wget https://ars.els-cdn.com/content/image/1-s2.0-S0092867415004304-mmc3.xlsx -O Sahni_2015_Table_S3.xlsx 
+wget https://ars.els-cdn.com/content/image/1-s2.0-S0092867415004304-mmc3.xlsx -O Sahni_2015_Table_S3.xlsx
+
+cd ../../code
+python3 produce_data_mappings.py
+python3 process_interactome.py
+BLAST human_reference_sequences.fasta against pdb_seqres_reduced.fasta
+python3 produce_structural_interactome.py
+python3 structural_interactome_stats.py
+
+# RefSeq
+cd ../data/external
+mkdir RefSeq
+cd RefSeq
+wget ftp://ftp.ncbi.nlm.nih.gov/refseq//H_sapiens/mRNA_Prot/human.*.protein.faa.gz
+gunzip human.*.protein.faa.gz
+cd ../../../code
+python3 process_refseq_files.py
+
+# ClinVar mutations
+cd ../data/external
+wget ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar//tab_delimited/variant_summary.txt.gz
+gunzip variant_summary.txt.gz
+cd ../../code
+python3 process_clinvar_mutations.py
+
+# dbSNP mutations
+mkdir dbsnp
+cd dbsnp
+# For i in [1-22,X,Y] run the following five command lines:
+	wget ftp://ftp.ncbi.nih.gov/snp//organisms/human_9606_b150_GRCh38p7/ASN1_flat/ds_flat_ch<i>.flat.gz
+	gunzip ds_flat_ch<i>.flat.gz
+	cd ../../../code
+	python3 process_dbsnp_flatfile.py
+	cd ../data/external/dbsnp
+cd ../../../code
+python3 process_dbsnp_mutations.py
 
 # BLOSUM62 substitution matrix
+cd ../data/external
 wget ftp://ftp.ncbi.nih.gov/blast/matrices/BLOSUM62
+
+cd ../../code
+python3 predict_perturbations_geometry.py
+python3 produce_mutation_structure_maps.py
+Submit mutations to Bindprofx/foldx
+python3 predict_perturbations_physics.py
+python3 calculate_junk_content_geometry.py
+python3 calculate_junk_content_physics.py
+python3 calculate_junk_content_experiment.py
+python3 plot_junk_content.py
+python3 calculate_protein_overlap.py
 
 # Illumina Body Map 2.0 tissue expression
 wget https://www.ebi.ac.uk/gxa/experiments-content/E-MTAB-513/
 
 # GTEx tissue expression
 wget https://gtexportal.org/home/datasets/GTEx_Analysis_v7_eQTL_expression_matrices.tar.gz
+tar -xzvf GTEx_Analysis_v7_eQTL_expression_matrices.tar.gz
+rm GTEx_Analysis_v7_eQTL_expression_matrices.tar.gz
+cd GTEx_Analysis_v7_eQTL_expression_matrices
+gunzip *.normalized_expression.bed.gz
+cd ..
 
 # HPA tissue expression
 wget https://www.proteinatlas.org/download/normal_tissue.tsv.zip
+gunzip normal_tissue.tsv.zip
 
 # Fantom5 tissue expression
 wget http://fantom.gsc.riken.jp/5/datafiles/reprocessed/hg38_latest/extra/CAGE_peaks_expression/hg38_fair+new_CAGE_peaks_phase1and2_tpm_ann.osc.txt.gz
-http://fantom.gsc.riken.jp/5/sstar/Browse_samples
+gunzip hg38_fair+new_CAGE_peaks_phase1and2_tpm_ann.osc.txt.gz
+
+# manually download fantom5_sample_type.xlsx from http://fantom.gsc.riken.jp/5/sstar/Browse_samples by selecting excel format
 
 # Gene ontology
+wget http://current.geneontology.org/ontology/go-basic.obo
 wget ftp://ftp.geneontology.org/pub/go//gene-associations/goa_human.gaf.gz
+gunzip goa_human.gaf.gz
+
+python3 compare_interactome_tissue_coexpr.py
+python3 plot_coexpr.py
+python3 compare_interactome_gosim.py
+python3 plot_gosim.py

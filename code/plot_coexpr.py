@@ -21,6 +21,9 @@ def main():
     # tissue expression databases
     expr_db = ['Illumina', 'GTEx', 'HPA', 'Fantom5']
     
+    # structural interactome names
+    struc_name = {'HI-II-14':'Y2H-SI', 'IntAct':'IntAct-SI'}
+    
     # interactome names
     interactome_names = ['Random interactions', 'Reference interactome', 'Structural interactome']
     
@@ -40,15 +43,15 @@ def main():
     interactomeDir = procDir / ref_interactome_name
     
     # figure directory
-    figDir = Path('../figures') / ref_interactome_name
+    figDir = Path('../figures') / ref_interactome_name / 'coexpr'
+    
+    # input data files
+    coexprFiles = [interactomeDir / 'coexpr' / ('interactome_coexpr_%s.pkl' % db) for db in expr_db]
     
     # create output directories if not existing
     if not figDir.exists():
         os.makedirs(figDir)
     
-    # input data files
-    coexprFiles = [interactomeDir / ('interactome_coexpr_%s.pkl' % db) for db in expr_db]
-                         
     allcoexpr = {}
     for db, coexprFile in zip(expr_db, coexprFiles):
         with open(coexprFile, 'rb') as f:
@@ -66,11 +69,13 @@ def main():
                    ylabel = 'Tissue co-expression of\ninteraction partners',
                    ylabels = [round(x, 1) for x in np.arange(0, 0.9, 0.2)],
                    colors = interactome_colors,
-                   #edgecolor = 'k',
+                   edgecolor = 'k',
                    barwidth = 0.2,
-                   bargap = 0.02,
+                   bargap = 0.03,
                    fontsize = 18,
-                   leg = interactome_names,
+                   leg = ['Random pairs',
+                          '%s reference interactome' % ref_interactome_name,
+                          struc_name[ref_interactome_name]],
                    show = showFigs,
                    figdir = figDir,
                    figname = 'interactome_coexpr')

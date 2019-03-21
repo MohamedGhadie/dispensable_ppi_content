@@ -250,6 +250,7 @@ def filter_chain_annotations_by_protein (inPath, proteins, outPath):
 
 def produce_interface_annotated_interactome (inPath,
                                              pdbDir,
+                                             chainSeqFile,
                                              chainMapFile,
                                              interfaceFile,
                                              chainStrucResFile,
@@ -300,7 +301,7 @@ def produce_interface_annotated_interactome (inPath,
     print('\tresolving interfaces for all %d PPIs' % numPPIs)
     interfaces = []
     for i, ppi in interactome.iterrows():
-        print('\t' + 'PPI: ' + protein1 + ' - ' + protein2)
+        print('\t' + 'PPI: ' + ppi.Protein_1 + ' - ' + ppi.Protein_2)
         sel_interfaces, sel_frac, sel_chainpairs = map_multi_interfaces (pdbDir,
                                                                          ppi.Protein_1,
                                                                          ppi.Protein_2,
@@ -314,7 +315,7 @@ def produce_interface_annotated_interactome (inPath,
                                                                          interfaceFile,
                                                                          PPIcount = i + 1,
                                                                          numPPIs = numPPIs)
-        interface.append( (sel_interfaces, sel_frac, sel_chainpairs) )
+        interfaces.append( (sel_interfaces, sel_frac, sel_chainpairs) )
         if sel_chainpairs:
             annotatedPPIs += 1
         print('\t' + '%d PPIs resolved' % (i + 1))
@@ -374,7 +375,7 @@ def map_multi_interfaces (pdbDir,
             break
         chainID1, chainID2 = chainPair
         pdbID, _ = chainID1.split('_')
-        if ppiCount and numPPIs:
+        if PPIcount and numPPIs:
             print('\t\t' + 'PPI: %s - %s (# %d out of %d) (%.1f %%)' 
                     % (protein1, protein2, PPIcount, numPPIs, 100 * PPIcount / numPPIs))
         else:
@@ -549,123 +550,6 @@ def read_chain_interfaces (inPath):
             else:
                 known_interfaces[chainKey] = row.Chain1_interface
 
-def write_pdb_mapped_mutations_old (mutations,
-                                interactomeFile,
-                                chainMapFile,
-                                chainSeqFile,
-                                proteinSeqFile,
-                                chainResOrderFile,
-                                pdbDir,
-                                outPath):
-    """Map mutations onto PDB chains and write to file the mutation, host protein, partner
-    protein, position on host protein, position on chain, PDB ID, chain_mutation 
-    (WT res, chain ID, pos on chain, mut res), partner chain.
-
-    Args:
-        mutations (DataFrame): mutations to be mapped onto PDB chains and writen to file.
-        interactomeFile (str): file directory containing interactome network.
-        chainMapFile (str): file directory containing table of chains mapping onto each protein.
-        chainSeqFile (str): file directory containing dictionary of chain sequences.
-        proteinSeqFile (str): file directory containing dictionary of protein sequences.
-        chainResOrderFile (str): file directory containing dict of SEQRES residue positions
-                                having structural coordinates, in same order.
-        pdbDir (str): file directory containing PDB structure files.
-        outPath (str): file directory to save mapped mutations to. 
-
-    """
-    print('\t' + 'loading interface-annotated interactome')
-    interactome = read_interface_annotated_interactome(interactomeFile)
-    
-    print('\t' + 'loading protein-chain alignment table')
-    chainMap = read_list_table(chainMapFile, ['Qpos', 'Spos'], [int, int], '\t')
-    
-    print('\t' + 'loading chain sequences')
-    with open(chainSeqFile, 'rb') as f:
-        chainSeq = pickle.load(f)
-    
-    print('\t' + 'loading protein sequences file')
-    with open(proteinSeqFile, 'rb') as f:
-        proteinSeq = pickle.load(f)
-    
-    print('\t' + 'loading chain structured residue order file')
-    with open(chainResOrderFile, 'rb') as f:
-        chainResOrder = pickle.load(f)
-    
-    print('\t' + 'writing mutations')
-    with io.open(outPath, "a") as fout:
-        fout.write('\t'.join(['protein',
-                              'partner',
-                              'protein_pos',
-                              'chain_pos',
-                              'pdb_id',
-                              'Chain_mutation',
-                              'Partner_chain']) + '\n')
-        
-        for i, mut in mutations.iterrows():
-            print('\t' + 'mutation # %d' % i)
-            perturbing = False
-            pos = mut.Mutation_Position
-            perturbedPartners = [p for p, perturb in zip(mut.partners, mut.perturbations) if perturb > 0]
-            ppis = interactome[ (interactome[ ["Protein_1", "Protein_2"] ] == mut.Protein).any(1) ]
-            for j, ppi in ppis.iterrows():
-                if (ppi.Protein_1 in perturbedPartners) or (ppi.Protein_2 in perturbedPartners):
-                    perturbing = True
-                    print('\t\t' + 'PPI # %d' % j)
-                    mapped = False
-                    chainpairs = ppi.Chain_pairs
-                    if ppi.Protein_2 == mut.Protein:
-                        chainpairs = [tuple(reversed(x)) for x in chainpairs]
-                        partner = ppi.Protein_1
-                    else:
-                        partner = ppi.Protein_2
-                    for ch1, ch2 in chainpairs:
-                        print('\t\t\t' + 'chain pair: %s-%s ' % (ch1, ch2))
-                        pdbid, ch1_id = ch1.split('_')
-                        _, ch2_id = ch2.split('_')
-                        structureFile = pdbDir / ('pdb' + pdbid + '.ent')
-                        if structureFile.is_file():
-                            struc = PDBParser(QUIET=True).get_structure(pdbid, str(structureFile))
-                            model = struc[0]
-                            resOrder = chainResOrder[ ch1 ]
-                            chain1 = model[ ch1_id ]
-                            residues = [res for res in chain1.get_residues()][ : len(resOrder) ]
-                            mappings = chainMap[ (chainMap["Query"] == mut.Protein) 
-                                                 & (chainMap["Subject"] == ch1) ]
-                            for _, mapping in mappings.iterrows():
-                                try:
-                                    mapPos = mapping.Spos[ mapping.Qpos.index(pos) ]
-                                    wtRes = proteinSeq[ mut.Protein ][ pos - 1 ]
-                                    chainRes = chainSeq[ ch1 ][ mapPos - 1 ]
-                                    if chainRes != mut.Mut_res:
-                                        try:
-                                            ind = resOrder.index( mapPos )
-                                            res = residues[ ind ]
-                                            _, resNum, _ = res.get_id()
-                                            fout.write('\t'.join([mut.Protein,
-                                                                  partner,
-                                                                  str(pos),
-                                                                  str(mapPos),
-                                                                  pdbid,
-                                                                  chainRes + ch1_id
-                                                                           + str(resNum)
-                                                                           + mut.Mut_res,
-                                                                  ch2_id]) +  '\n')
-                                            print('\t\t\t' + 'mutation mapping writen to file')
-                                            mapped = True
-                                        except ValueError:
-                                            print('\t\t\t' + 'chain residue coordinates not known')
-                                    else:
-                                        print('\t\t\t' + 'chain residue same as mutation residue')
-                                except ValueError:
-                                    print('\t\t\t' + 'mutation position not part of protein-chain alignment')
-                        else:
-                            print('\t\t\t' + 'structure file for chain ' + ch1 + ' not found')
-                    if not mapped:
-                        print('\t\t\t' + 'mutation mapping not successfull')
-                    fout.write('\n')
-            if not perturbing:
-                print('\t\t' + 'perturbed PPI not found for mutation')
-
 def write_mutation_structure_maps (mutations,
                                    interactomeFile,
                                    chainMapFile,
@@ -826,36 +710,3 @@ def position_map (resPos, strucMap):
         else:
             posMap.append(np.nan)
     return np.array(posMap)
-
-# def read_mutation_ddg (inPath):
-#     
-#     """Read mutation change (loss) in binding free energy from file writen by 
-#     function "write_pdb_mapped_mutations".
-# 
-#     Args:
-#         inPath (str): file directory containing change in binding free energy. 
-# 
-#     """
-#     ddg = pd.DataFrame(columns=["protein",
-#                                 "partner",
-#                                 "protein_pos",
-#                                 "chain_pos",
-#                                 "pdb_id",
-#                                 "chain_mutation",
-#                                 "partner_chain",
-#                                 "submitted",
-#                                 "DDG"])
-#     c = -1
-#     with io.open(inPath, "r", encoding="utf-8") as f:
-#         next(f)
-#         for line in f:
-#             strsplit = list( map ( str.strip, line.split('\t') ) )
-#             if len(strsplit) == 9:
-#                 c += 1
-#                 ddg.loc[c] = strsplit
-#     ddg = ddg.drop_duplicates(subset = ["protein", "partner", "protein_pos"],
-#                               keep = 'first').reset_index(drop=True)
-#     ddg["protein_pos"] = ddg["protein_pos"].apply(int)
-#     ddg["chain_pos"] = ddg["chain_pos"].apply(int)
-#     ddg["DDG"] = ddg["DDG"].apply(float)
-#     return ddg

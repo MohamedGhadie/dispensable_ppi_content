@@ -65,24 +65,19 @@ def main():
     dataDir = Path('../data')
     
     # directory of data files from external sources
-    extDir = dataDir / 'external'
+    extDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data/external')
     
     # parent directory of all processed data files
     procDir = dataDir / 'processed'
     
     # directory of processed data files specific to interactome
     interactomeDir = procDir / interactome_name
-        
-    # figure directory
-    figDir = Path('../figures') / interactome_name 
     
-    # create directories if not existing
-    if not procDir.exists():
-        os.makedirs(procDir)
-    if not interactomeDir.exists():
-        os.makedirs(interactomeDir)
-    if not figDir.exists():
-        os.makedirs(figDir)
+    # directory of GO similarity output data files
+    gosimDir = interactomeDir / 'gosim'
+    
+    # figure directory
+    figDir = Path('../figures') / interactome_name / 'gosim'
     
     # get root ontology label to label output files and figures
     ont_label = ont_abv [ont_root]
@@ -94,16 +89,22 @@ def main():
     structuralInteractomeFile = interactomeDir / 'human_interface_annotated_interactome.txt'
     
     # output data files
-    refPPIListFile = interactomeDir / 'refPPIs.txt'
-    randPairListFile = interactomeDir / 'randPairs.txt'
-    refPPIgosimParamFile = interactomeDir / ('fastsemsim_parameters_refPPIs_%s_%s' % (ont_label, sim_measure))
-    randPairgosimParamFile = interactomeDir / ('fastsemsim_parameters_randPairs_%s_%s' % (ont_label, sim_measure))
-    refPPIfastsemsimOutFile = interactomeDir / ('fastsemsim_output_refPPIs_%s_%s' % (ont_label, sim_measure))
-    randPairfastsemsimOutFile = interactomeDir / ('fastsemsim_output_randPairs_%s_%s' % (ont_label, sim_measure))
-    refPPIgosimFile = interactomeDir / ('gosim_refPPIs_%s_%s.pkl' % (ont_label, sim_measure))
-    randPairgosimFile = interactomeDir / ('gosim_randPairs_%s_%s.pkl' % (ont_label, sim_measure))
-    allPPIgosimFile = interactomeDir / ('allPPI_gosim_%s_%s.pkl' % (ont_label, sim_measure))
-                                                   
+    refPPIListFile = gosimDir / 'refPPIs.txt'
+    randPairListFile = gosimDir / 'randPairs.txt'
+    refPPIgosimParamFile = gosimDir / ('fastsemsim_parameters_refPPIs_%s_%s' % (ont_label, sim_measure))
+    randPairgosimParamFile = gosimDir / ('fastsemsim_parameters_randPairs_%s_%s' % (ont_label, sim_measure))
+    refPPIfastsemsimOutFile = gosimDir / ('fastsemsim_output_refPPIs_%s_%s' % (ont_label, sim_measure))
+    randPairfastsemsimOutFile = gosimDir / ('fastsemsim_output_randPairs_%s_%s' % (ont_label, sim_measure))
+    refPPIgosimFile = gosimDir / ('gosim_refPPIs_%s_%s.pkl' % (ont_label, sim_measure))
+    randPairgosimFile = gosimDir / ('gosim_randPairs_%s_%s.pkl' % (ont_label, sim_measure))
+    allPPIgosimFile = gosimDir / ('allPPI_gosim_%s_%s.pkl' % (ont_label, sim_measure))
+    
+    # create directories if not existing
+    if not gosimDir.exists():
+        os.makedirs(gosimDir)
+    if not figDir.exists():
+        os.makedirs(figDir)
+    
     #------------------------------------------------------------------------------------
     # load reference and structural interactomes
     #------------------------------------------------------------------------------------
@@ -215,9 +216,9 @@ def main():
     
     # print results
     print('\n' + 'Mean %s similarity for interaction partners:' % ont_root)
-    print('Random interactions: %f (SE = %g, n = %d)' % (np.mean(randGOsim),
-                                                         sderror(randGOsim),
-                                                         len(randGOsim)))
+    print('Random pairs: %f (SE = %g, n = %d)' % (np.mean(randGOsim),
+                                                  sderror(randGOsim),
+                                                  len(randGOsim)))
     print('Reference interactome: %f (SE = %g, n = %d)' % (np.mean(refGOsim),
                                                            sderror(refGOsim),
                                                            len(refGOsim)))
@@ -226,9 +227,9 @@ def main():
                                                             len(strucGOsim)))
     print('\n' + 'Statistical significance')
     print('reference interactome vs random interactions:')
-    bootstrap_test(refGOsim, randGOsim, iter = 10000)
+    bootstrap_test(refGOsim, randGOsim, iter = 100000)
     print('structural interactome vs reference interactome:')
-    bootstrap_test(strucGOsim, refGOsim, iter = 10000)
+    bootstrap_test(strucGOsim, refGOsim, iter = 100000)
     
     # plot results
     bar_plot([ np.mean(randGOsim), np.mean(refGOsim), np.mean(strucGOsim) ],

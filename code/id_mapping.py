@@ -5,8 +5,7 @@ import pandas as pd
 from pathlib import Path
 from Bio import SeqIO
 from Bio.SubsMat import MatrixInfo
-from text_tools import (parse_fasta_file,
-                        read_list_table)
+from text_tools import read_list_table
 
 def produce_uniqueGene_swissProtIDs(inPath, geneMapFile, outPath):
     """Remove Swiss-Prot IDs with either no gene name or a gene name shared 
@@ -281,6 +280,17 @@ def produce_chain_dict (inPath, outPath):
     with open(outPath, 'wb') as fOut:
         pickle.dump(chains, fOut)
 
+def produce_chain_strucRes_dict (inPath, outPath):
+    
+    s = list( SeqIO.parse( str(inPath), 'fasta') )
+    strucRes = {}
+    for row in s:
+        if ':disorder' in row.id:  
+            pdbid, chainID, _ = list( map( str.strip, row.id.split(':') ) )
+            strucRes[ pdbid.lower() + '_' + chainID ] = str( row.seq )
+    with open(outPath, 'wb') as fOut:
+        pickle.dump(strucRes, fOut)
+
 def produce_chainSeq_dict (inPath, outPath):
     
     s = list(SeqIO.parse(str(inPath), 'fasta'))
@@ -307,9 +317,9 @@ def produce_substitution_matrix (name, outPath):
                 'BLOSUM95' : MatrixInfo.blosum95}
     matrix = matrices[name]
     scores = {}
-    for k in matrix:
-        scores[k] = matrix[k]
-        scores[tuple(reversed(k))] = matrix[k]
+    for k, v in matrix.items():
+        scores[k] = v
+        scores[tuple(reversed(k))] = v
     with open(outPath, 'wb') as fOut:
         pickle.dump(scores, fOut)
 

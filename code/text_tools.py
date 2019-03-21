@@ -231,7 +231,10 @@ def parse_hmmscan_file(hmmscanFile, isoformType, coordType, outPath):
               ', %d mappings extracted' % len(domMap) + 
               ' and written to file ' + str(outPath))
 
-def parse_blast_file (inPath, encod, pausetime, outPath):
+def parse_blast_file (inPath,
+                      outPath,
+                      encoding = 'us-ascii',
+                      pausetime = 0):
     
     allignKeys = ['Query',
                   'Qlen',
@@ -253,11 +256,11 @@ def parse_blast_file (inPath, encod, pausetime, outPath):
     currentInfo = {k:'-' for k in allignKeys[:4]}
     previous = '-'
     
-    with io.open(inPath, "r", encoding=encod) as f:
+    with io.open(inPath, "r", encoding=encoding) as f:
         for numLines, _ in enumerate(f):
             pass
             
-    with io.open(inPath, "r", encoding=encod) as fin, io.open(outPath, "w") as fout:
+    with io.open(inPath, "r", encoding=encoding) as fin, io.open(outPath, "w") as fout:
         for i, line in enumerate(fin):
             if not (i % 1e6):
                 print('\t\t%d million out of %g million lines parsed' % (i // 1e6, numLines / 1e6))
@@ -353,7 +356,7 @@ def produce_item_list(inPath, cols, outPath):
 
 def read_list_table (inPath, cols, dtyp, delm = '\t'):
     
-    df = pd.read_table(inPath, delm)
+    df = pd.read_table(inPath, dtype = str, sep = delm)
     if not isinstance(cols, (list, tuple)):
         cols = [cols]
         dtyp = [dtyp]

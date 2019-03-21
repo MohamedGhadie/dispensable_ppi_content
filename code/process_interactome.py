@@ -24,23 +24,17 @@ def main():
     dataDir = Path('../data')
     
     # directory of data files from external sources
-    extDir = dataDir / 'external'
+    extDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data/external')
     
     # parent directory of all processed data files
     procDir = dataDir / 'processed'
     
     # directory of processed data files specific to interactome
     interactomeDir = procDir / interactome_name
-         
-    # create output directories if not existing
-    if not procDir.exists():
-        os.makedirs(procDir)
-    if not interactomeDir.exists():
-        os.makedirs(interactomeDir)
     
     # input data files
-    HI_II_14_rawfile = extDir / 'HI-II-14.tsv'
-    IntAct_rawfile = extDir / 'intact.txt'
+    HI_II_14_datafile = extDir / 'HI-II-14.tsv'
+    IntAct_datafile = extDir / 'intact.txt'
     UniprotIDmapFile = procDir / 'to_human_uniprotID_map.pkl'
     UniqueGeneSwissProtIDFile = procDir / 'uniprot_unique_gene_reviewed_human_proteome.list'
     GeneMapFile = procDir / 'to_human_geneName_map.pkl'
@@ -52,15 +46,21 @@ def main():
     InteractomeSequenceFile = interactomeDir / 'interactome_sequences.fasta'
     ProteinPartnersFile = interactomeDir / 'protein_interaction_partners.pkl'
     
+    # create output directories if not existing
+    if not procDir.exists():
+        os.makedirs(procDir)
+    if not interactomeDir.exists():
+        os.makedirs(interactomeDir)
+    
     if not InteractomeFile1.is_file():
         print('parsing interactome dataset')
         if interactome_name is 'HI-II-14':
-            parse_HI_II_14_interactome(HI_II_14_rawfile,
+            parse_HI_II_14_interactome(HI_II_14_datafile,
                                        UniprotIDmapFile,
                                        InteractomeFile1,
                                        selfPPIs = False)
         elif interactome_name is 'IntAct':
-            parse_IntAct_interactions(IntAct_rawfile, 
+            parse_IntAct_interactions(IntAct_datafile, 
                                       UniqueGeneSwissProtIDFile,
                                       InteractomeFile1,
                                       geneMapFile = GeneMapFile,
@@ -72,7 +72,7 @@ def main():
     if not InteractomeFile.is_file():
         interactome = pd.read_table(InteractomeFile1)
         print('Initial interactome size: %d PPIs' % len(interactome))
-        if interactome_name == 'IntAct':
+        if interactome_name is 'IntAct':
             interactome = remove_interactions_reported_once(interactome)
             #interactome = duplicated_PPIs(interactome)
             print('Interactome size after removing PPIs reported only once: %d PPIs' % len(interactome))

@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------------------------
-# Process RefSeq data files
+# Process RefSeq intermediate data files
 #----------------------------------------------------------------------------------------
 
 import os
@@ -9,20 +9,17 @@ from text_tools import parse_refSeq_fasta, merge_refSeq_sequence_files
 
 def main():
     
-    # number of files to process in RefSeq directory
-    numfiles = 39
-    
     # parent directory of all data files
     dataDir = Path('../data')
     
     # directory of data files from external sources
-    extDir = dataDir / 'external'
+    extDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data/external')
     
     # parent directory of all processed data files
     procDir = dataDir / 'processed'
     
     # directory for RefSeq raw data files
-    refseqInDir = extDir / 'refSeq'
+    refseqInDir = extDir / 'RefSeq'
     
     # directory to save RefSeq processed data files
     refseqOutDir = procDir / 'refSeq_intermediate'
@@ -35,6 +32,7 @@ def main():
     if not refseqOutDir.exists():
         os.makedirs(refseqOutDir)
     
+    numfiles = len([name for name in os.listdir(str(refseqInDir))])    
     for i in np.arange(1, numfiles + 1):
         print('parsing RefSeq sequence file %d of %d' % (i, numfiles))
         parse_refSeq_fasta (refseqInDir / ('human.%d.protein.faa' % i),
@@ -42,6 +40,7 @@ def main():
     
     if not refseqFile.is_file():
         print('merging RefSeq sequences from all files')
+        numfiles = len([name for name in os.listdir(str(refseqOutDir))])
         merge_refSeq_sequence_files (refseqOutDir, numfiles, refseqFile)
 
 if __name__ == '__main__':

@@ -9,7 +9,6 @@ from id_mapping import (produce_geneName_dict,
                         produce_uniqueGene_swissProtIDs,
                         produce_uniqueGene_sequences,
                         produce_proteinSeq_dict,
-                        produce_protein_chain_alignment_dict,
                         produce_uniprotID_dict,
                         produce_rnaToProtein_refseqID_dict,
                         produce_chainSeq_dict,
@@ -23,7 +22,7 @@ def main():
     dataDir = Path('../data')
     
     # directory of data files from external sources
-    extDir = dataDir / 'external'
+    extDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data/external')
     
     # parent directory of all processed data files
     procDir = dataDir / 'processed'
@@ -115,10 +114,6 @@ def main():
     if not chainStrucResFile.is_file():
         print('parsing PDB chain structured-residue order file')
         produce_chain_strucRes_dict (chainResAnnotFile, chainStrucResFile)
-    
-    if not chainAlignFile.is_file():
-        print('producing protein-chain alignment dictionary')
-        produce_protein_chain_alignment_dict (chainMapFile, chainAlignFile)
 
 if __name__ == "__main__":
     main()

@@ -19,24 +19,17 @@ def main():
     # parent directory of all data files
     dataDir = Path('../data')
     
-    # directory of data files from external sources
-    extDir = dataDir / 'external'
-    
     # parent directory of all processed data files
     procDir = dataDir / 'processed'
     
-    # directory for dbSNP raw data files
-    dbsnpInDir = extDir / 'dbsnp'
-    
-    # directory to save dbSNP intermediate processed data files
-    dbsnpOutDir = procDir / 'dbsnp_intermediate'
+    # directory of dbSNP intermediate processed data files
+    dbsnpDir = procDir / 'dbsnp_intermediate'
     
     # number of residues included in each side of mutation flanking sequence
     flankingSeqSideLen = 10
         
     # input data files
     UniprotIDmapFile = procDir / 'to_human_uniprotID_map.pkl'
-    rnaToProteinRefseqIDMapFile = procDir / 'human_rnaToProtein_refseqID_map.pkl'
     refseqFile = procDir / 'refseq_human_protein_sequences.txt'
     UniqueGeneSequenceFile = procDir / 'human_unique_gene_reference_sequences.txt'
     
@@ -49,27 +42,13 @@ def main():
     # create output directories if not existing
     if not procDir.exists():
         os.makedirs(procDir)
-    if not dbsnpOutDir.exists():
-        os.makedirs(dbsnpOutDir)
     
     #------------------------------------------------------------------------------------
     # process dbSNP mutations
     #------------------------------------------------------------------------------------
     
-    print('collecting dbSNP flatfile keys')
-    parse_dbsnp_flatfile_keys (dbsnpInDir / 'ds_flat_ch1.flat',
-                               dbsnpOutDir,
-                               pausetime = 30)
-    
-    print('parsing dbSNP flatfiles')
-    for i in list(map(str, np.arange(1, 23))) + ['X','Y']:
-        parse_dbsnp_flatfile (dbsnpInDir / ('ds_flat_ch%s.flat' % i),
-                              dbsnpOutDir,
-                              dbsnpOutDir / ('dbsnp_chr%s.txt' % i),
-                              pausetime = 30)
-    
     print('merging dbSNP mutation files')
-    filter_and_merge_dbsnp_mutations (dbsnpOutDir,
+    filter_and_merge_dbsnp_mutations (dbsnpDir,
                                       UniprotIDmapFile,
                                       dbsnpMutationsFile1,
                                       pausetime = 30)

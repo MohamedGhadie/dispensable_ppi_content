@@ -26,7 +26,7 @@ def t_test(sample1, sample2):
     
     """
     _, pvalue = stats.ttest_ind(sample1, sample2, equal_var = False)
-    print("t-test, p-value = %g" % pvalue)
+    print("t test, p-value = %g" % pvalue)
 
 def perm_test(sample1, sample2, iter):
     """Calculate statistical significance for difference in mean between two data samples
@@ -45,7 +45,7 @@ def perm_test(sample1, sample2, iter):
         np.random.shuffle(s)
         if diff <= np.abs(np.mean(s[:n]) - np.mean(s[n:])):
             k += 1
-    print("permutation-test, p-value = %g (%d iterations)" % (k / iter, iter))
+    print("permutation test, p-value = %g (%d iterations)" % (k / iter, iter))
 
 def bootstrap_test(sample1, sample2, iter = 10000):
     """Calculate statistical significance for difference in mean between two data samples
@@ -67,9 +67,9 @@ def bootstrap_test(sample1, sample2, iter = 10000):
             randSample2 = np.random.choice(sample2, size=n2, replace=True)
             if diff <= np.abs(np.mean(randSample1) - np.mean(randSample2)):
                 k += 1
-        print("bootstrap-test, p-value = %g (%d iterations)" % (k / iter, iter))
+        print("bootstrap test, p-value = %g (%d iterations)" % (k / iter, iter))
     else:
-        print("bootstrap-test, p-value = NaN (empty sample)")
+        print("bootstrap test, p-value = NaN (empty sample)")
 
 def normality_test (sample, alpha):
     """Check if a data sample has a normal distribution.

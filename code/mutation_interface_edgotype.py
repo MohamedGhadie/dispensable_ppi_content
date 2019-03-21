@@ -1,4 +1,6 @@
+import io
 import numpy as np
+import pandas as pd
 from random import seed, random
 from simple_tools import reverseTuples
     
@@ -136,6 +138,58 @@ def energy_based_perturbation (perturbs, ddg, cutoff, probabilistic = False):
         allPred.append(pred)
     return allPred, knownDDG, unknownDDG
 
+def create_perturbed_network (interactome,
+                              perturbations,
+                              network_outPath,
+                              nodeColor_outPath):
+    """Create network from perturbed interactome for plotting by Cytoscape software.
+
+    Args:
+        interactome (DataFrame): interactome with all edges.
+        perturbations (DataFrame): interactome perturbations.
+        network_outPath (str): file directory to save edges for Cytoscape plotting.
+        nodeColor_outPath (str): file directory to save node colors for Cytoscape plotting.
+    
+    """
+    network = pd.DataFrame()
+    edges = [tuple(e) for e in interactome[["Protein_1", "Protein_2"]].values]
+    edgeColors = {e:'black' for e in edges}
+    
+    network["Node_1"], network["Node_2"] = zip(*edges)
+    nodes = list(set(network.values.flatten()))
+    numMut = {p:0 for p in nodes}
+    network["Edge"] = network["Node_1"] + ' (pp) ' + network["Node_2"]
+    
+    # assign colors to perturbed edges
+    for _, row in perturbations.iterrows():
+        if row.protein in numMut:
+            numMut[row.protein] += 1 
+        for partner, perturb in zip(row.partners, row.perturbations):
+            if perturb > 0:
+                if (row.protein, partner) in edgeColors:
+                    edgeColors[(row.protein, partner)] = 'red'
+                elif (partner, row.protein) in edgeColors:
+                    edgeColors[(partner, row.protein)] = 'red'
+    network["Edge_color"] = [edgeColors[e] for e in edges]
+    network.to_csv(network_outPath, index=False, sep='\t')
+
+    # assign colors to nodes
+    with io.open(nodeColor_outPath, "w") as fout:
+        fout.write('Node' + '\t' + 'Color' + '\n')
+        nodeColors = []
+        for n in nodes:
+            if numMut[n] > 9:
+                nodeColors.append('blue')
+            elif numMut[n] > 2:
+                nodeColors.append('mediumpurple')
+            elif numMut[n] > 0:
+                nodeColors.append('magenta')
+            else:
+                nodeColors.append('grey')
+            fout.write(n + '\t' + nodeColors[-1] + '\n')
+    
+    return nodes, edges, nodeColors, network["Edge_color"].tolist()
+
 def assign_edgotypes (perturbs, mono_edgetic = False):
     
     edgotypes = []
@@ -146,12 +200,15 @@ def assign_edgotypes (perturbs, mono_edgetic = False):
 
 def assign_edgotype (perturbs, mono_edgetic = False):
     
-    perturbs = [int(p > 0) for p in perturbs]
-    if (perturbs.count(1) >= 2) or (1 in perturbs and not mono_edgetic):
+    pert = []
+    for p in perturbs:
+        pert.append(p > 0 if not np.isnan(p) else np.nan)
+    numPerturbs = pert.count(True)
+    if (numPerturbs >= 2) or ((numPerturbs == 1) and not mono_edgetic):
         return 'edgetic'
-    elif np.nan in perturbs:
+    elif pert.count(np.nan) > 0:
         return '-'
-    elif perturbs.count(1) is 1:
+    elif numPerturbs == 1:
         return 'mono-edgetic'
     else:
         return 'non-edgetic'

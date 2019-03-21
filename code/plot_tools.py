@@ -1,5 +1,5 @@
-#import matplotlib
-#matplotlib.use('Agg')
+# import matplotlib
+# matplotlib.use('Agg')
 import os
 import numpy as np
 import networkx as nx
@@ -129,6 +129,7 @@ def multi_bar_plot (data,
                     xlabel = None,
                     ylabel = None,
                     colors = 'b',
+                    hatches = None,
                     barwidth = 0.3,
                     bargap = 0,
                     capsize = 0,
@@ -142,6 +143,7 @@ def multi_bar_plot (data,
                     xlim = None,
                     ylim = None,
                     xticks = None,
+                    yMinorTicks = False,
                     bottomPos = None,
                     adjustBottom = False,
                     shiftBottomAxis = None,
@@ -196,9 +198,17 @@ def multi_bar_plot (data,
         ecolors = [ecolors] * numGroups
     elif len(ecolors) < numGroups:
         ecolors.extend(['k'] * (numGroups - len(ecolors)))
+    if not hatches:
+        hatches = [None] * numGroups
     labels = leg if leg else [None] * numGroups
     
-    for i, d, error, color, ecolor, label in zip(range(numGroups), data, errors, colors, ecolors, labels):
+    for i, d, error, color, ecolor, hatch, label in zip(range(numGroups),
+                                                        data,
+                                                        errors,
+                                                        colors,
+                                                        ecolors,
+                                                        hatches,
+                                                        labels):
         numBars = len(d)
         if overlap:
             ind = list(np.arange(1, numBars + 1))
@@ -210,6 +220,7 @@ def multi_bar_plot (data,
                alpha = opacity,
                color = color,
                edgecolor = edgecolor,
+               hatch = hatch,
                label = label)
         
         if error:
@@ -247,6 +258,7 @@ def multi_bar_plot (data,
                  xlim = xlim,
                  ylim = ylim,
                  xind = xticks,
+                 yMinorTicks = yMinorTicks,
                  bottomPos = bottomPos,
                  adjustBottom = adjustBottom,
                  shiftBottomAxis = shiftBottomAxis,
@@ -261,17 +273,18 @@ def curve_plot (ydata,
                 error = None,
                 xlim = None,
                 ylim = None,
-                styles = None,
-                fitstyles = None,
+                styles = 'k.',
+                fitstyles = 'k',
                 capsize = 10,
                 msize = 12,
                 mwidth = 0,
                 ewidth = 1,
-                ecolors = None,   
+                ecolors = 'k',   
                 xlabel = None,
                 ylabel = None,
                 xticks = None,
                 yticks = None,
+                yMinorTicks = False,
                 xticklabels = None,
                 yticklabels = None,
                 fontsize = 12,
@@ -309,14 +322,27 @@ def curve_plot (ydata,
     """
     plt_fig = plt.figure()
     ph = plt_fig.add_subplot(111)
-    if not styles:
-        styles = ['b.'] * len(ydata)
-    if not fitstyles:
-        fitstyles = ['b'] * len(ydata)
-    if not ecolors:
-        ecolors = ['k'] * len(ydata)
+    if not isinstance(ydata[0], (list, tuple)):
+        ydata, styles, fitstyles, ecolors = [ydata], [styles], [fitstyles], [ecolors]
+        if error:
+            error = [error]
+    else:
+        if isinstance(styles, str):
+            styles = [styles] * len(ydata)
+        if isinstance(fitstyles, str):
+            fitstyles = [fitstyles] * len(ydata)
+        if isinstance(ecolors, str):
+            ecolors = [ecolors] * len(ydata)
+#     if not styles:
+#         styles = ['b.'] * len(ydata)
+#     if not fitstyles:
+#         fitstyles = ['b'] * len(ydata)
+#     if not ecolors:
+#         ecolors = ['k'] * len(ydata)
     if not xdata:
-        xdata = [ np.arange(1, len(y) + 1) for y in ydata ]
+        xdata = [np.arange(1, len(y) + 1) for y in ydata]
+    elif not isinstance(xdata[0], (list, tuple)):
+        xdata = [xdata] * len(ydata)
     fitlim = []
     if compress:
         for xpos, ypos, style, ecolor in zip(xdata, ydata, styles, ecolors):
@@ -340,6 +366,8 @@ def curve_plot (ydata,
             fitlim.append( [ min(xmid), max(xmid) ] )
     elif error:
         for xpos, ypos, err, style, ecolor in zip(xdata, ydata, error, styles, ecolors):
+            if type(err[0]) in [list, tuple]:
+                err = list(zip(*err))
             ph.errorbar(xpos,
                         ypos,
                         yerr = err,
@@ -381,6 +409,7 @@ def curve_plot (ydata,
                  ylim = ylim,
                  xind = xticks,
                  yind = yticks,
+                 yMinorTicks = yMinorTicks,
                  adjustBottom = adjustBottom,
                  shiftBottomAxis = shiftBottomAxis,
                  xbounds = xbounds)
@@ -477,6 +506,7 @@ def box_plot (data,
               fontsize = 12,
               xlim = None,
               ylim = None,
+              xticks = None,
               adjustBottom = False,
               shiftBottomAxis = None,
               xbounds = None,
@@ -514,7 +544,7 @@ def box_plot (data,
     if isinstance(colors, str):
         colors = [colors] * numBoxes
     elif len(colors) < numBoxes:
-        colors.extend(['b'] * (numBoxs - len(colors)))
+        colors.extend(['b'] * (numBoxes - len(colors)))
     
     for box, color in zip(bp['boxes'], colors):
         box.set(color='black', linewidth=1)
@@ -532,6 +562,9 @@ def box_plot (data,
     for flier in bp['fliers']:
         flier.set(marker='o', markerfacecolor = 'white', alpha=0.5)
     
+    if not xticks:
+        xticks = list(np.arange(1, numBoxes + 1))
+    
     adjust_axis (plt_fig,
                  ph,
                  xlabels = xlabels,
@@ -541,6 +574,7 @@ def box_plot (data,
                  fontsize = fontsize,
                  xlim = xlim,
                  ylim = ylim,
+                 xind = xticks,
                  adjustBottom = adjustBottom,
                  shiftBottomAxis = shiftBottomAxis,
                  xbounds = xbounds)
@@ -549,9 +583,11 @@ def box_plot (data,
     show_figure (plt_fig, show)
 
 def multi_histogram_plot (samples,
-                          colors,
+                          colors = 'b',
                           xlabel = None,
                           ylabel = None,
+                          xlabels = None,
+                          ylabels = None,
                           leg = None,
                           edgecolor = 'none',
                           fontsize = 12,
@@ -600,6 +636,8 @@ def multi_histogram_plot (samples,
                  ph,
                  xlabel = xlabel,
                  ylabel = ylabel,
+                 xlabels = xlabels,
+                 ylabels = ylabels,
                  fontsize = fontsize,
                  xlim = xlim,
                  ylim = ylim)
@@ -673,6 +711,8 @@ def pie_plot (data,
               pct = None,
               pctdist = 0.6,
               colors = None,
+              edgecolor = 'black',
+              edgewidth = 1,
               show = True,
               figdir = None,
               figname = None):
@@ -693,16 +733,17 @@ def pie_plot (data,
     """
     plt_fig = plt.figure()
     ph = plt_fig.add_subplot(111)
-    pie_return = ph.pie(data,
-                        labels = labels,
-                        labeldistance = labeldist,
-                        startangle = angle,
-                        colors = colors,
-                        autopct = pct,
-                        pctdistance = pctdist)
+    wedges, text = ph.pie(data,
+                          labels = labels,
+                          labeldistance = labeldist,
+                          startangle = angle,
+                          colors = colors,
+                          autopct = pct,
+                          pctdistance = pctdist)
     ph.axis('equal')
-    for w in pie_return[0]:
-        w.set_linewidth(0)
+    for w in wedges:
+        w.set_edgecolor(edgecolor)
+        w.set_linewidth(edgewidth)
     if figdir and figname:
         save_figure (figdir, figname)
     show_figure (plt_fig, show)
@@ -824,11 +865,11 @@ def network_plot (edges,
         for edge in edges:
             nodes.update(edge[:2])
     nodes = list(nodes)
-    if nodeSizes is None:
+    if not nodeSizes:
         nodeSizes = [20] * len(nodes)
-    if edgeColors is None:
+    if not edgeColors:
         edgeColors = ['black'] * len(edges)
-    if nodeColors is None:
+    if not nodeColors:
         nodeColors = ['blue'] * len(nodes)
     for node, size, color in zip(nodes, nodeSizes, nodeColors):
         g.add_node(node, size=size, color=color)
@@ -893,6 +934,7 @@ def adjust_axis (plt_fig,
     if ylim:
         ph.set_ylim(ylim)
     ph.tick_params('both', length=10, which='major')
+    ph.tick_params('both', length=5, which='minor')
     ph.get_xaxis().set_tick_params(which='both', bottom=False, top=False, labelbottom=False)
     ph.xaxis.set_ticks_position('bottom')
     ph.get_xaxis().set_tick_params(which='both', direction='out')

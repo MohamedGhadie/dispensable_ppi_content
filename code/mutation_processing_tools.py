@@ -1,3 +1,7 @@
+#----------------------------------------------------------------------------------------
+# Modules for processing mutation files.
+#----------------------------------------------------------------------------------------
+
 import io
 import re
 import time
@@ -5,16 +9,21 @@ import pickle
 from Bio import Seq
 import pandas as pd
 import numpy as np
-from simple_tools import (is_numeric,
-                          first_mismatch,
-                          find_substring,
-                          find_masked_substring)
+from simple_tools import is_numeric, find_substring, find_masked_substring
 
 def parse_dbsnp_flatfile_keys (inPath,
                                outDir,
                                encoding = 'us-ascii',
                                pausetime = 0):
-    
+    """Scan dbSNP mutation flatfile for mutation property keys.
+
+    Args:
+        inPath (str): path to flatfile containing dbSNP mutations.
+        outDir (str): file directory to save key files to.
+        encoding (str): encoding used to read flatfile.
+        pausetime (numeric): pausing time in seconds between processing of every 50 million lines.
+
+    """
     RSkeys = set()
     SNPkeys = set()
     VALkeys = set()
@@ -73,7 +82,16 @@ def parse_dbsnp_flatfile (inPath,
                           outPath,
                           encoding = 'us-ascii',
                           pausetime = 0):
-    
+    """Produce tab-delimited file from dbSNP mutation flatfile.
+
+    Args:
+        inPath (str): path to flatfile containing dbSNP mutations.
+        keyDir (str): file directory containing dbSNP flatfile keys.
+        outPath (str): path to save processed mutation file to.
+        encoding (str): encoding used to read flatfile.
+        pausetime (numeric): pausing time in seconds between processing of every 50 million lines.
+
+    """
     with open(keyDir / 'dbsnp_RSkeys.pkl', 'rb') as f:
         RSkeys = pickle.load(f)
     with open(keyDir / 'dbsnp_SNPkeys.pkl', 'rb') as f:
@@ -186,6 +204,15 @@ def filter_and_merge_dbsnp_mutations (inDir,
                                       outPath,
                                       pausetime = 0):
     
+    """Filter and merge dbSNP mutations from several tab-delimited files.
+
+    Args:
+        inDir (str): file directory containing dbSNP files to merge.
+        UniProtIDmapFile (str): path to file containing UniProt ID mapping dictionary.
+        outPath (str): path to save processed mutation file to.
+        pausetime (numeric): pausing time in seconds between processing each file.
+
+    """
     with open(uniprotIDmapFile, 'rb') as f:
         uniprotIDmap = pickle.load(f)
     chromosomes = list(map(str, list(np.array(range(22)) + 1) + ['X', 'Y']))
@@ -266,6 +293,20 @@ def filter_clinvar_mutations (inPath,
                               status = None,
                               uniprotIDmapFile = None):
     
+    """Filter ClinVar mutations.
+
+    Args:
+        inPath (str): path to file containing ClinVar mutations.
+        outPath (str): path to save processed mutation file to.
+        assembly (list, str): genome assembly for selected mutations.
+        origin (list, str): germline or somatic.
+        type (list, str): type of mutations to select.
+        incClinSig (list, str): valid clinical significance terms for selected mutations.
+        excClinSig (list, str): mutations with any of these clinical significance terms are excluded.
+        status (list, str): review status for selected mutations.
+        UniProtIDmapFile (str): path to file containing UniProt ID mapping dictionary.
+
+    """
     mutations = pd.read_table(inPath, sep='\t')
     numMut = len(mutations)
     print('\t' + 'Total number of mutations: %d' % numMut)
@@ -347,7 +388,13 @@ def filter_clinvar_mutations (inPath,
     mutations.to_csv(outPath, index=False, sep='\t')
 
 def decompose_clinvar_snp_mutations (inPath, outPath):
-    
+    """Produce ClinVar mutation file mutation names decomposed into several attributes.
+
+    Args:
+        inPath (str): path to file containing ClinVar mutations in tab-delimited format.
+        outPath (str): path to save processed mutation file to.
+
+    """
     mutations = pd.read_table(inPath, sep='\t')
     decomposed = zip(* decompose_clinvar_snp_names (mutations["Name"].tolist()))
     for col, val in zip(["rna_acc", "cdna_mut", "wt_res", "mut_position", "mut_res"], decomposed):
@@ -358,15 +405,32 @@ def decompose_clinvar_snp_mutations (inPath, outPath):
     mutations.to_csv(outPath, index=False, sep='\t')
 
 def decompose_clinvar_snp_names (names):
-    
-    # NM_017547.3(FOXRED1):c.694C>T (p.Gln232Ter)
+    """Decompose a list of ClinVar mutation names into several attributes.
+        Mutation name example: NM_017547.3(FOXRED1):c.694C>T (p.Gln232Ter)
+
+    Args:
+        names (list): mutation names to be decomposed.
+
+    Returns:
+        list
+
+    """
     decomposed = []
     for name in names:
         decomposed.append( decompose_clinvar_snp_name (name) )
     return decomposed
 
 def decompose_clinvar_snp_name (name):        
-    
+    """Decompose a ClinVar mutation name into several attributes.
+        Example: NM_017547.3(FOXRED1):c.694C>T (p.Gln232Ter)
+
+    Args:
+        names (str): mutation name to be decomposed.
+
+    Returns:
+        tuple
+
+    """
     m = re.match(r"(\w{2}_\d+\.\d+)*(\(\w*\))*(\:)*(c\.[\w\>\-]*)*(\s)*(\(p\.\w*\))*", name.strip())
     if m:
         rna_acc, gene_name, dots, cdna_mut, space, pr_mut = m.groups()
@@ -377,7 +441,16 @@ def decompose_clinvar_snp_name (name):
             return rna_acc, cdna_mut, None, None, None
 
 def decompose_protein_snp (mut):
-    
+    """Decompose a protein SNP into wildtype residue, position, and mutation residue.
+        Example: p.Gln232Ter
+
+    Args:
+        mut (str): mutation to be decomposed.
+
+    Returns:
+        tuple
+
+    """
     snp = mut.strip()
     m = re.match(r"p\.\D{3}\d+\D{3}$", snp)
     if m:
@@ -387,7 +460,14 @@ def decompose_protein_snp (mut):
         return None, None, None
 
 def map_clinvar_protein_refseq_IDs (inPath, idMapFile, outPath):
-    
+    """Produce ClinVar mutation file with RefSeq RNA accessions mapped to RefSeq protein accessions.
+
+    Args:
+        inPath (str): path to file containing ClinVar mutations in tab-delimited format.
+        idMapFile (str): path to file containing RefSeq ID mapping dictionary.
+        outPath (str): path to save processed mutation file to.
+
+    """
     mutations = pd.read_table(inPath, sep='\t')
     with open(idMapFile, 'rb') as f:
         protein_acc = pickle.load(f)
@@ -398,7 +478,15 @@ def map_clinvar_protein_refseq_IDs (inPath, idMapFile, outPath):
     mutations.to_csv(outPath, index=False, sep='\t')
 
 def get_flanking_sequences (inPath, sequenceFile, sideLength, outPath):
-    
+    """Produce mutation flanking sequences.
+
+    Args:
+        inPath (str): path to file containing mutations in tab-delimited format.
+        sequenceFile (str): path to file containing protein sequences.
+        sideLength (numeric): number of residues included on each side of the flanking sequence.
+        outPath (str): path to save processed mutation file to.
+
+    """
     mutations = pd.read_table(inPath, sep='\t')
     sequences = pd.read_table(sequenceFile, sep='\t')
     sequencedProteins = sequences["ID"].values
@@ -418,7 +506,16 @@ def get_flanking_sequences (inPath, sequenceFile, sideLength, outPath):
     mutations.to_csv(outPath, index=False, sep='\t')
 
 def match_flanking_sequences (inPath, sequenceFile, outPath, mask = False):
-    
+    """Select mutations whose flanking sequence matches to protein sequence.
+
+    Args:
+        inPath (str): path to file containing mutations in tab-delimited format.
+        sequenceFile (str): path to file containing protein sequences in tab-delimited format.
+        outPath (str): path to save selected mutations to.
+        mask (bool): if True, mutation position is masked when matching flanking sequence 
+                     to protein sequence.
+
+    """
     mutations = pd.read_table(inPath, sep='\t')
     sequences = pd.read_table(sequenceFile, sep='\t')
     sequencedProteins = sequences["ID"].values
@@ -452,44 +549,78 @@ def match_flanking_sequences (inPath, sequenceFile, outPath, mask = False):
     mutations.drop("seq_match", axis=1, inplace=True)
     mutations.to_csv(outPath, index=False, sep='\t')
 
-def flanking_sequence(pos, seq, sideLength):
-    
+def flanking_sequence (pos, seq, sideLength):
+    """Return the flanking sequence centered at a given position.
+
+    Args:
+        pos (numeric): flanking sequence center position.
+        seq (str): full sequence.
+        sideLength (numeric): number of residues included on each side of the flanking sequence.
+
+    Returns:
+        tuple: starting position and flanking sequence, otherwise '-' 
+
+    """
     pos = pos - 1
     seqLen = len(seq)
     if 0 <= pos < seqLen:
         s = max(0, pos - sideLength)
         e = min(seqLen, pos + sideLength + 1)
-        return pos - s + 1, seq[ s : e ]
+        return pos - s + 1, seq[s:e]
     else:
         return '-'
 
 def remove_synon_nonsense_mutations(inPath, outPath):
-    
+    """Remove synonymous and nonsense mutations.
+
+    Args:
+        inPath (str): path to file containing mutations in tab-delimited format.
+        outPath (str): path to save selected mutations to.
+
+    """
     mutations = pd.read_table(inPath, sep='\t')
     nonsynonymous = mutations.apply(lambda x: x["mut_res"] != x["wt_res"], axis=1)
     missense = mutations["mut_res"] != '*'
     mutations = mutations[nonsynonymous & missense]
     mutations.to_csv(outPath, index=False, sep='\t')
 
-def toOneLetterAA (aminoAcid):
-    
+def toOneLetterAA (aa):
+    """Convert an amino acid three-letter code to one-letter code.
+
+    Args:
+        aa (str): amino acid three-letter code.
+
+    Returns:
+        str if valid, otherwise '-'
+
+    """
     oneLetter = {'Cis': 'C', 'Asp': 'D', 'Ser': 'S', 'Gln': 'Q', 'Lys': 'K', 'Trp': 'W', 
                  'Thr': 'T', 'Asn': 'N', 'Pro': 'P', 'Phe': 'F', 'Ala': 'A', 'Gly': 'G', 
                  'Ile': 'I', 'Leu': 'L', 'His': 'H', 'Arg': 'R', 'Met': 'M', 'Val': 'V', 
                  'Glu': 'E', 'Tyr': 'Y', 'Ter': '*'}
     
-    aa = aminoAcid.title()
+    aa = aa.title()
     if aa in oneLetter:
         return oneLetter[aa] 
     else:
         return '-'
 
-def remove_mutation_overlaps (naturalMutationsFile, diseaseMutationsFile):
+def remove_mutation_overlaps (nondiseaseMutationFile, diseaseMutationFile):
+    """Remove nondisease missense mutations overlaping in position with disease missense mutations.
+        Also removes synonymous mutations and duplicates by position and mutation residue.
+
+    Args:
+        nondiseaseMutationFile (str): path to tab-delimited file containing nondisease mutations.
+        diseaseMutationFile (str): path to tab-delimited file containing disease mutations.
+
+    Returns:
+        Two DataFrames: nondisease mutations, disease mutations
+
+    """
+    naturalMutations = pd.read_table (nondiseaseMutationFile, sep='\t')
+    diseaseMutations = pd.read_table (diseaseMutationFile, sep='\t')
     
-    naturalMutations = pd.read_table(naturalMutationsFile, sep='\t')
-    diseaseMutations = pd.read_table(diseaseMutationsFile, sep='\t')
-    
-    # identify common mutations overlapping in position with disease mutations
+    # identify non-disease mutations overlapping in position with disease mutations
     df = diseaseMutations[ ["protein", "mut_position"] ].copy()
     df2 = naturalMutations[ ["protein", "mut_position"] ].copy()
     df2 = df2.drop_duplicates().reset_index(drop=True)
@@ -508,18 +639,18 @@ def remove_mutation_overlaps (naturalMutationsFile, diseaseMutationsFile):
     numNaturalMutations = len(naturalMutations)
     numDiseaseMutations = len(diseaseMutations)
     
-    # remove invalid mutations, i.e., those with mutation residue similar to wild type
+    # remove synonymous mutations, if any exist
     naturalMutations = naturalMutations [naturalMutations["wt_res"] != naturalMutations["mut_res"]]
     diseaseMutations = diseaseMutations [diseaseMutations["wt_res"] != diseaseMutations["mut_res"]]
     
-    print( '\n' + 'Number of invalid mutations removed (WT residue = Mut residue)' )
+    print( '\n' + 'Number of synonymous mutations removed' )
     print( 'non-disease invalid mutations: %d' % (numNaturalMutations - len(naturalMutations)) )
     print( 'disease invalid mutations: %d' % (numDiseaseMutations - len(diseaseMutations)) )
     
     numNaturalMutations = len(naturalMutations)
     numDiseaseMutations = len(diseaseMutations)
     
-    print( '\n' + 'Number of mutations after removing invalid mutations:' )
+    print( '\n' + 'Number of mutations after removing synonymous mutations:' )
     print( 'non-disease mutations: %d' % numNaturalMutations )
     print( 'disease mutations: %d' % numDiseaseMutations )
     

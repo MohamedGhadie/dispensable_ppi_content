@@ -1,3 +1,4 @@
+#----------------------------------------------------------------------------------------
 # Process reference interactome from protein-protein interaction dataset.
 #
 # Run the following scripts before running this script:

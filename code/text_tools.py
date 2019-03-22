@@ -1,6 +1,8 @@
-import os
+#----------------------------------------------------------------------------------------
+# Modules for text processing.
+#----------------------------------------------------------------------------------------
+
 import io
-import csv
 import time
 import pickle
 from pathlib import Path
@@ -8,27 +10,29 @@ from Bio import Seq, SeqIO
 import pandas as pd
 import numpy as np
 
-def parse_IntAct_interactions(inPath,
-                              spListFile,
-                              outPath,
-                              geneMapFile = None,
-                              selfPPIs = True):
+def parse_IntAct_interactions (inPath,
+                               spListFile,
+                               outPath,
+                               geneMapFile = None,
+                               selfPPIs = True):
     """Read protein-protein interactions with valid Swiss-Prot IDs from IntAct file.
 
     Args:
-        inPath (str): IntAct interaction file directory.
-        spListFile (str): file directory with list of valid Swiss-Prot IDs
-        outPath (str): file directory to save interactions to.
-        selfPPIs (boolean): False to remove self-PPIs, True to include them.
+        inPath (str): path to file containing IntAct interactions.
+        spListFile (str): path to file with list of valid Swiss-Prot IDs.
+        outPath (str): path to save processed interactions to.
+        geneMapFile (str): path to file containing dictionary of UniProt ID mapping to gene names.
+        selfPPIs (boolean): True to include self-PPIs.
 
     """
     with open(spListFile, 'r') as f:
         swissProtIDs = set(f.read().split())
-    getGeneNames = False
-    if geneMapFile is not None:
-        getGeneNames = True
+    if geneMapFile:
         with open(geneMapFile, 'rb') as f:
             geneMap = pickle.load(f)
+        getGeneNames = True
+    else:
+        getGeneNames = False
     
     with io.open(inPath, "r", encoding="utf-8") as f, io.open(outPath, "w") as fout:
         if getGeneNames:
@@ -91,17 +95,17 @@ def parse_IntAct_interactions(inPath,
           ', %d PPIs extracted ' % c + 
           'and written to file ' + str(outPath))
 
-def parse_HI_II_14_interactome(inPath,
-                               UniProtIDmapFile,
-                               outPath,
-                               selfPPIs = True):
+def parse_HI_II_14_interactome (inPath,
+                                UniProtIDmapFile,
+                                outPath,
+                                selfPPIs = True):
     """Read protein-protein interactions that map to UniProt IDs from HI-II-14 interactome file.
 
     Args:
-        inPath (str): HI-II-14 interactome file directory.
-        UniProtIDmapFile (str): file directory with UniProt ID mapping dictionary.
-        outPath (str): file directory to save protein-protein interactions to.
-        selfPPIs (boolean): False to remove self-PPIs, True to include them.
+        inPath (str): path to file containing HI-II-14 interactions.
+        UniProtIDmapFile (str): path to file containing UniProt ID mapping dictionary.
+        outPath (str): path to save processed interactions to.
+        selfPPIs (boolean): True to include self-PPIs.
 
     """
     with open(UniProtIDmapFile, 'rb') as f:
@@ -125,14 +129,28 @@ def parse_HI_II_14_interactome(inPath,
     interactome.to_csv(outPath, index=False, sep='\t')
 
 def parse_refSeq_fasta (inPath, outPath):
-    
+    """Convert RefSeq fasta protein sequence file to tab-delimited file.
+
+    Args:
+        inPath (str): path to file containing RefSeq sequences in fasta format.
+        outPath (str): path to save sequences in tab-delimited format.
+
+    """
     with io.open(outPath, "w") as fout:
         fout.write('\t'.join(['ID','Length','Sequence']) + '\n')
         for entry in SeqIO.parse(str(inPath), 'fasta'):
             fout.write('\t'.join([entry.id, str(len(entry.seq)), str(entry.seq)]) +  '\n')
 
 def merge_refSeq_sequence_files (inDir, numFiles, outPath):
-    
+    """Merge tab-delimited RefSeq protein sequence files together.
+
+    Args:
+        inDir (str): directory containing all RefSeq files to merge.
+                     File # i must be named 'refseq_human_protein_<i>.txt'
+        numFiles (numeric): number of files to merge.
+        outPath (str): path to save merged sequence file.
+
+    """
     if not inDir.exists():
         print( '\t' + 'Directory %s does not exist' % str(inDir) )
         return
@@ -151,11 +169,11 @@ def merge_refSeq_sequence_files (inDir, numFiles, outPath):
     else:
         print( '\t' + 'no RefSeq files found' )
 
-def parse_fasta_file(inPath, outPath):
+def parse_fasta_file (inPath, outPath):
     """Read sequences from fasta file.
 
     Args:
-        inPath (str): fasta file directory containing sequnces.
+        inPath (str): path to FASTA file containing sequences.
         outPath (str): path to save tab-delimited sequence file to.
 
     """
@@ -167,75 +185,19 @@ def parse_fasta_file(inPath, outPath):
     print('%d sequences extracted from file ' % (i + 1) + str(inPath) +
                 ' and written to file ' + str(outPath))
 
-def parse_hmmscan_file(hmmscanFile, isoformType, coordType, outPath):
-    """Read protein domain mappings from HMMER hmmscan output file.
-
-    Args:
-        inPath (str): HMMER hmmscan output file directory.
-        isoformType (str): type of proteins scanned in file, either 'reference', or
-                            'alternative' for both reference and alternative isoforms
-        coordType (str): 'alignment' or 'envelope' domain coordinates
-        outPath (str): path to save protein domain mapping table to.
-
-    """
-    isoformType = isoformType.lower()
-    domMap = pd.DataFrame(columns = ('spid', 'domain', 'startPos', 'endPos'))
-    if not(os.path.exists(hmmscanFile)):
-        print('File %s cannot be found' % hmmscanFile)
-    else:
-        with io.open(hmmscanFile, 'r', encoding='utf-8') as f:
-            for numLines, _ in enumerate(f):
-                pass
-        domMap["spid"] = [np.nan] * (numLines + 1)
-        c = -1
-        i = -1
-        with io.open(hmmscanFile, "r", encoding="utf-8") as f:
-            reader = csv.reader(f)
-            for row in reader:
-                if row[0][0] != '#':
-                    i += 1
-                    print('parsed %d of %d lines' % (i,numLines))
-                    strsplit = list(map(str.strip,row[0].split()))
-                    dot = strsplit[1].find('.')
-                    if (dot != -1):
-                        if coordType == 'alignment':
-                            startPos = strsplit[15]
-                            endPos = strsplit[16]
-                        elif coordType == 'envelope':
-                            startPos = strsplit[17]
-                            endPos = strsplit[18]
-                        if ((strsplit[1][:2] == 'PF')
-                            and strsplit[1][2:dot].isalnum()
-                            and strsplit[2].isalnum()
-                            and startPos.isalnum()
-                            and endPos.isalnum()):
-                            c += 1
-                            if isoformType == 'reference':
-                                domMap.loc[c] = [strsplit[3], strsplit[1][:dot],
-                                                int(startPos), int(endPos)]
-                            elif isoformType == 'alternative':
-                                sp = strsplit[3].split('|')[1].strip()
-                                domMap.loc[c] = [sp,
-                                                 strsplit[1][:dot],
-                                                 int(startPos),
-                                                 int(endPos)]
-                        else:
-                            print('row %d format not readable' % i)
-                            print(strsplit)
-                    else:
-                        print('dot not found in row %d' % i)
-                        print(strsplit)
-        domMap = domMap[:c + 1]
-        domMap.to_csv(outPath, index=False, sep='\t')
-        print('%d lines parsed from ' % (i + 1) + str(hmmscanFile) +
-              ', %d mappings extracted' % len(domMap) + 
-              ' and written to file ' + str(outPath))
-
 def parse_blast_file (inPath,
                       outPath,
                       encoding = 'us-ascii',
                       pausetime = 0):
-    
+    """Read alignments from BLAST output file.
+
+    Args:
+        inPath (str): path to BLAST output file.
+        outPath (str): path to save tab-delimited alignment table to.
+        encoding (str): encoding for reading BLAST output file.
+        pausetime (numeric): time in seconds to pause after processing 50 million lines.
+
+    """
     allignKeys = ['Query',
                   'Qlen',
                   'Subject',
@@ -323,7 +285,16 @@ def parse_blast_file (inPath,
           'and written to file ' + str(outPath))
 
 def reduce_fasta_headers (inPath, delimiter, first, last, outPath):
-    
+    """Reduce headers in FASTA file to specific subset of elements.
+
+    Args:
+        inPath (str): path to FASTA file.
+        delimiter (str): delimiter used to split FASTA headers.
+        first (numeric): position of the first header element to include.
+        last (numeric): position of the last header element to include.
+        outPath (str): path to save FASTA file with reduced headers to.
+        
+    """
     s = list(SeqIO.parse(str(inPath), 'fasta'))
     with io.open(outPath, "w") as fout:
         for _, row in enumerate(s):
@@ -333,19 +304,27 @@ def reduce_fasta_headers (inPath, delimiter, first, last, outPath):
             fout.write(str(row.seq) + '\n')
 
 def write_fasta_file (data, idCol, seqCol, outPath):
-    
+    """Produce FASTA file from DataFrame columns.
+
+    Args:
+        data (DataFrame): table to be written to FASTA file.
+        idCol (str): name of column containing IDs to be written as FASTA headers.
+        seqCol (str): name of column containing sequences to be written to FASTA file.
+        outPath (str): path to save FASTA file to.
+        
+    """
     with io.open(outPath, "w") as fout:
         for _, row in data.iterrows():
             fout.write('>' + row[idCol] + '\n')
             fout.write(row[seqCol] + '\n')
 
-def produce_item_list(inPath, cols, outPath):
-    """Write unique items from a dataframe column to file
+def produce_item_list (inPath, cols, outPath):
+    """Write unique items from specific table columns to file.
 
     Args:
-        inPath (str): file directory containing dataframe
-        col (str): name of column to save
-        outPath (str): file directory to save list of items to
+        inPath (str): path to file containing table to be written.
+        cols (list, str): names of columns to be saved to file.
+        outPath (str): path to save list of items to.
 
     """
     df = pd.read_table(inPath, sep='\t')
@@ -355,7 +334,16 @@ def produce_item_list(inPath, cols, outPath):
             fout.write('%s\n' % item)
 
 def read_list_table (inPath, cols, dtyp, delm = '\t'):
-    
+    """Read a table from a file into a DataFrame with specified column entries converted 
+        to lists.
+
+    Args:
+        inPath (str): path to file containing table to be read.
+        cols (list, str): names of columns whose entries are to be converted to lists.
+        dtyp (list, datatype): data types to convert each column list elements to.
+        delm (str): delimiter used to read table.
+
+    """
     df = pd.read_table(inPath, dtype = str, sep = delm)
     if not isinstance(cols, (list, tuple)):
         cols = [cols]
@@ -365,7 +353,16 @@ def read_list_table (inPath, cols, dtyp, delm = '\t'):
     return df
 
 def write_list_table (df, cols, outPath, delm = '\t'):
-    
+    """Write a DataFrame to text file with specified columns with list entries converted 
+        to comma-separated strings.
+
+    Args:
+        df (DataFrame): table to be writen to file.
+        cols (list, str): names of columns whose list entries are to be converted to strings.
+        outPath (str): path to save table to.
+        delm (str): delimiter used to write table to file.
+
+    """
     if isinstance(cols, (list, tuple)):
         for col in cols:
             df[col] = df[col].apply(lambda x: ','.join(map(str, x)))
@@ -383,7 +380,22 @@ def write_hpc_job (outPath,
                    rapid = None,
                    jobid = None,
                    commands = None):
-    
+    """Create a job file to be run by McGill HPC server.
+        See http://www.hpc.mcgill.ca
+
+    Args:
+        outPath (str): path to save job file to.
+        nodes (numeric): number of server nodes to be allocated.
+        ppn (numeric): total number of CPU cores to be allocated.
+        pmem (numeric): default random access memory (RAM) in MB to be reserved per core.
+        walltime (str: 'days:hr:min:sec'): maximum time allowed for job to run.
+        outputfile (str): name of file where standard output is written.
+        errorfile (str): name of file where runtime error is written.
+        rapid (str): resource allocation project identifier (RAPid).
+        jobid ('str'): job name.
+        commands (list): extra commands in string format to be written to job file.
+
+    """
     with io.open(outPath, "w") as fout:
         fout.write('#!/bin/bash')
         fout.write('\n' + '#PBS -l nodes=%d:ppn=%d,pmem=%dm,walltime=%s' % (nodes, ppn, pmem, walltime))

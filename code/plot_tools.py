@@ -67,8 +67,8 @@ def bar_plot (data,
         xbounds (list): chop off x-axis beyond these bounds.
         leg (list): legend labels for two groups.
         show (boolean): True to show plot, otherwise plot is not shown.
-        figdir (str): directory to save figure in.
-        figname (str): name of file to save figure in.
+        figdir (Path): directory path to save figure in.
+        figname (Path): name of file to save figure in.
     
     """
     plt_fig = plt.figure()
@@ -191,8 +191,8 @@ def multi_bar_plot (data,
         overlap (bool): plot bars of different groups over each other.
         leg (list): legend labels for two groups.
         show (boolean): True to show plot, otherwise plot is not shown.
-        figdir (str): directory to save figure in.
-        figname (str): name of file to save figure in.
+        figdir (Path): directory path to save figure in.
+        figname (Path): name of file to save figure in.
     
     """
     plt_fig = plt.figure()
@@ -346,8 +346,8 @@ def curve_plot (ydata,
         shiftBottomAxis (numeric) = shift lower x-axis by this much.
         xbounds (list): chop off x-axis beyond these bounds.
         show (boolean): True to show plot, otherwise plot is not shown.
-        figdir (str): directory to save figure in.
-        figname (str): name of file to save figure in.
+        figdir (Path): directory path to save figure in.
+        figname (Path): name of file to save figure in.
     
     """
     plt_fig = plt.figure()
@@ -485,8 +485,8 @@ def scatter_plot (xdata,
         barLabels (list): tick labels on colorbar.
         showBar (boolean): True to show colorbar, otherwise bar is not shown.
         show (boolean): True to show plot, otherwise plot is not shown.
-        figdir (str): directory to save figure in.
-        figname (str): name of file to save figure in.
+        figdir (Path): directory path to save figure in.
+        figname (Path): name of file to save figure in.
     
     """
     plt_fig = plt.figure()
@@ -565,8 +565,8 @@ def box_plot (data,
         ybounds (list): chop off y-axis beyond these bounds.
         colors (list): color for each box, optionally one color for all boxes.
         show (boolean): 'yes' to show plot, otherwise plot is not shown.
-        figdir (str): directory to save figure in.
-        figname (str): name of file to save figure in.
+        figdir (Path): directory path to save figure in.
+        figname (Path): name of file to save figure in.
     
     """
     plt_fig = plt.figure()
@@ -648,8 +648,8 @@ def multi_histogram_plot (samples,
         xlim (list): limits for x-axis.
         ylim (list): limits for y-axis.
         show (boolean): True to show plot, otherwise plot is not shown.
-        figdir (str): directory to save figure in.
-        figname (str): name of file to save figure in.
+        figdir (Path): directory path to save figure in.
+        figname (Path): name of file to save figure in.
     
     """
     plt_fig = plt.figure()
@@ -705,8 +705,8 @@ def heatmap_plot(mat,
         barLabels (list): tick labels on colorbar.
         showBar (boolean): True to show colorbar, otherwise bar is not shown.
         show (boolean): True to show plot, otherwise plot is not shown.
-        figdir (str): directory to save figure in.
-        figname (str): name of file to save figure in.
+        figdir (Path): directory path to save figure in.
+        figname (Path): name of file to save figure in.
     
     """
     plt_fig = plt.figure()
@@ -762,8 +762,8 @@ def pie_plot (data,
         edgecolor (str): color of wedge edges.
         edgewidth (numeric): width of wedge edges.
         show (boolean): True to show plot, otherwise plot is not shown.
-        figdir (str): directory to save figure in.
-        figname (str): name of file to save figure in.
+        figdir (Path): directory path to save figure in.
+        figname (Path): name of file to save figure in.
     
     """
     plt_fig = plt.figure()
@@ -798,8 +798,8 @@ def venn2_plot (data,
         colors (list): color for each group.
         hideNum (boolean): True to hide numbers on venn diagram.
         show (boolean): 'yes' to show plot, otherwise plot is not shown.
-        figdir (str): directory to save figure in.
-        figname (str): name of file to save figure in.
+        figdir (Path): directory path to save figure in.
+        figname (Path): name of file to save figure in.
     
     """
     plt_fig = plt.figure()           
@@ -831,8 +831,8 @@ def venn3_plot (data,
         colors (list): color for each group.
         hideNum (boolean): True to hide numbers on venn diagram.
         show (boolean): 'yes' to show plot, otherwise plot is not shown.
-        figdir (str): directory to save figure in.
-        figname (str): name of file to save figure in.
+        figdir (Path): directory path to save figure in.
+        figname (Path): name of file to save figure in.
     
     """
     plt_fig = plt.figure()           
@@ -890,8 +890,8 @@ def network_plot (edges,
         edge_vmax (numeric): maximum value on edge color scale.
         layout (str): network layout.
         show (boolean): True to show plot, otherwise plot is not shown.
-        figdir (str): directory to save figure in.
-        figname (str): name of file to save figure in.
+        figdir (Path): directory path to save figure in.
+        figname (Path): name of file to save figure in.
     
     """
     g = nx.Graph()
@@ -1028,8 +1028,8 @@ def save_figure (figdir, figname):
     """Save last created figure to file.
 
     Args:
-        figdir (str): directory to save figure in.
-        figname (str): name of file to save figure in.
+        figdir (Path): directory path to save figure in.
+        figname (Path): name of file to save figure in.
     
     """
     figdir_eps = figdir / 'eps_figures'

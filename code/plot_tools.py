@@ -1,3 +1,7 @@
+#----------------------------------------------------------------------------------------
+# Modules for plotting.
+#----------------------------------------------------------------------------------------
+
 # import matplotlib
 # matplotlib.use('Agg')
 import os
@@ -39,7 +43,7 @@ def bar_plot (data,
 
     Args:
         data (list): data of one group to plot.
-        error (list): error on each bar in one group, empty list for no error bars.
+        error (list): error on each bar in one group.
         xlabels (list): label for each bar on the x-axis.
         ylabels (list(numeric)): label for each tick on the y-axis.
         xlabel (str): label on the x-axis.
@@ -53,9 +57,11 @@ def bar_plot (data,
         edgecolor (str): color for bar edges.
         ecolors (list):  list of colors for each error bar, or one color for all bars.
         fontsize (numeric): font size for x and y tick labels and axis labels.
+        opacity (numeric): transparency.
         xlim (list): limits for x-axis.
         ylim (list): limits for y-axis.
-        yMinorTicks (boolean): True to show minor ticks on y-axis.
+        xticks (list): x-tick position.
+        yMinorTicks (numeric): number of minor ticks between two major ticks on y-axis.
         adjustBottom (boolean) = True if bottom margin of figure needs adjustment.
         shiftBottomAxis (numeric) = shift x-axis by this much.
         xbounds (list): chop off x-axis beyond these bounds.
@@ -104,14 +110,14 @@ def bar_plot (data,
         xticks = ind
     adjust_axis (plt_fig,
                  ph,
-                 xlabels = xlabels,
-                 ylabels = ylabels,
+                 xticklabels = xlabels,
+                 yticklabels = ylabels,
                  xlabel = xlabel,
                  ylabel = ylabel,
                  fontsize = fontsize,
                  xlim = xlim,
                  ylim = ylim,
-                 xind = xticks,
+                 xticks = xticks,
                  yMinorTicks = yMinorTicks,
                  adjustBottom = adjustBottom,
                  shiftBottomAxis = shiftBottomAxis,
@@ -157,13 +163,15 @@ def multi_bar_plot (data,
 
     Args:
         data (list): list of data for each group to plot.
-        errors (list): list of errors for each group, empty lists for no error bars.
+        errors (list): list of errors for each group.
         xlabels (list): label for each bar on the x-axis.
         ylabels (list(numeric)): label for each tick on the y-axis.
         xlabel (str): label on the x-axis.
         ylabel (str): label on the y-axis.
-        colors (list): list of colors for each group, optionally one color for all bars per group.
+        colors (list): color for each group, optionally one color for all bars per group.
+        hatches (list): bar hatche for each group.
         barwidth (numeric): width of each bar.
+        bargap (numeric): gap between adjacent bars of different groups. 
         capsize (numeric): width of upper and lower caps on error bars.
         fmt (str): error bar center point format.
         msize (numeric): size for error marker.
@@ -171,11 +179,16 @@ def multi_bar_plot (data,
         edgecolor (str): color for bar edges.
         ecolors (list):  list of error bar colors for rach group, optionally one color for all bars per group.
         fontsize (numeric): font size for x and y tick labels and axis labels.
+        opacity (numeric): color transparency.
         xlim (list): limits for x-axis.
         ylim (list): limits for y-axis.
-        adjustBottom (boolean) = True if bottom margin of figure needs adjustment.
-        shiftBottomAxis (numeric) = shift x-axis by this much.
+        xticks (list): x-tick positions.
+        yMinorTicks (numeric): number of minor ticks between two major ticks on y-axis.
+        bottomPos (numeric): adjust lower x-axis to this vertical position.
+        adjustBottom (boolean) = adjust bottom margin of figure.
+        shiftBottomAxis (numeric) = shift lower x-axis by this much.
         xbounds (list): chop off x-axis beyond these bounds.
+        overlap (bool): plot bars of different groups over each other.
         leg (list): legend labels for two groups.
         show (boolean): True to show plot, otherwise plot is not shown.
         figdir (str): directory to save figure in.
@@ -250,14 +263,14 @@ def multi_bar_plot (data,
             xticks = [k + tickshift for k in np.arange(1, numBars + 1)]
     adjust_axis (plt_fig,
                  ph,
-                 xlabels = xlabels,
-                 ylabels = ylabels,
+                 xticklabels = xlabels,
+                 yticklabels = ylabels,
                  xlabel = xlabel,
                  ylabel = ylabel,
                  fontsize = fontsize,
                  xlim = xlim,
                  ylim = ylim,
-                 xind = xticks,
+                 xticks = xticks,
                  yMinorTicks = yMinorTicks,
                  bottomPos = bottomPos,
                  adjustBottom = adjustBottom,
@@ -303,18 +316,35 @@ def curve_plot (ydata,
     """Plot multiple scatter plots.
 
     Args:
-        xdata (list): x-axis data points.
         ydata (list): y-axis data points, list for each plot.
+        xdata (list): x-axis data points, list for each plot.
+        error (list): list of errors for each plot.
         xlim (list): limits on x-axis.
         ylim (list): limits on y-axis.
         styles (list): plot style for each plot.
+        fitstyles (list): style for each linefit.
+        capsize (numeric): width of upper and lower caps on error bars.
         msize (numeric): marker size.
         mwidth (numeric): marker edge width.
+        ewidth (numeric): thickness for error bars, including caps.
+        ecolors (list):  error bar colors for each group.
         xlabel (str): label for x-axis.
         ylabel (str): label for y-axis.
-        xticklabels (list): label for each tick on the x-axis.
+        xticks (list): x-tick positions.
+        yticks (list): y-tick positions.
+        yMinorTicks (numeric): number of minor ticks between two major ticks on y-axis.
+        xticklabels (list): labels for major ticks on x-axis.
+        yticklabels (list): labels for major ticks on y-axis.
         fontsize (numeric): font size for x and y tick labels and axis labels.
         leg (list): label for each group.
+        compress (bool): compress data points.
+        linefit (bool): fit data to straight line.
+        xstart (numeric): starting point of first bin on x-axis, if compressing data.
+        binwidth (numeric): bin width on x-axis, if compressing data.
+        perbin (int): maximum number of data points compressed per bin, if compressing data.
+        adjustBottom (boolean) = adjust bottom margin of figure.
+        shiftBottomAxis (numeric) = shift lower x-axis by this much.
+        xbounds (list): chop off x-axis beyond these bounds.
         show (boolean): True to show plot, otherwise plot is not shown.
         figdir (str): directory to save figure in.
         figname (str): name of file to save figure in.
@@ -333,12 +363,6 @@ def curve_plot (ydata,
             fitstyles = [fitstyles] * len(ydata)
         if isinstance(ecolors, str):
             ecolors = [ecolors] * len(ydata)
-#     if not styles:
-#         styles = ['b.'] * len(ydata)
-#     if not fitstyles:
-#         fitstyles = ['b'] * len(ydata)
-#     if not ecolors:
-#         ecolors = ['k'] * len(ydata)
     if not xdata:
         xdata = [np.arange(1, len(y) + 1) for y in ydata]
     elif not isinstance(xdata[0], (list, tuple)):
@@ -393,22 +417,21 @@ def curve_plot (ydata,
     if linefit:
         for xpos, ypos, style, xpts in zip(xdata, ydata, fitstyles, fitlim):
             ypts = np.poly1d( np.polyfit(xpos, ypos, 1) ) (xpts)
-            #ypts = np.polyval( np.polyfit(xpos, ypos, 2), np.unique(xpos) )
             ph.plot(xpts, ypts, style)
     
     if leg:
         ph.legend(leg)
     adjust_axis (plt_fig,
                  ph,
-                 xlabels = xticklabels,
-                 ylabels = yticklabels,
+                 xticklabels = xticklabels,
+                 yticklabels = yticklabels,
                  xlabel = xlabel,
                  ylabel = ylabel,
                  fontsize = fontsize,
                  xlim = xlim,
                  ylim = ylim,
-                 xind = xticks,
-                 yind = yticks,
+                 xticks = xticks,
+                 yticks = yticks,
                  yMinorTicks = yMinorTicks,
                  adjustBottom = adjustBottom,
                  shiftBottomAxis = shiftBottomAxis,
@@ -444,14 +467,23 @@ def scatter_plot (xdata,
     Args:
         xdata (list): x-axis data points.
         ydata (list): y-axis data points, list for each plot.
+        color (list): plot colors.
+        msize (numeric): marker size.
+        ewidth (numeric): marker edge width.
+        style (list): plot style for each plot.
+        cmap (colormap): colormap.
+        norm (Normalize): normalize instance to scale luminance data.
         xlim (list): limits on x-axis.
         ylim (list): limits on y-axis.
-        style (list): plot style for each plot.
-        msize (numeric): marker size.
         xlabel (str): label for x-axis.
         ylabel (str): label for y-axis.
         fontsize (numeric): font size for x and y tick labels and axis labels.
         leg (list): label for each group.
+        barPos (tuple): position of color bar.
+        orientation (str): colorbar orientation (vertical or horizontal).
+        barTicks (list): tick positions on colorbar.
+        barLabels (list): tick labels on colorbar.
+        showBar (boolean): True to show colorbar, otherwise bar is not shown.
         show (boolean): True to show plot, otherwise plot is not shown.
         figdir (str): directory to save figure in.
         figname (str): name of file to save figure in.
@@ -526,6 +558,7 @@ def box_plot (data,
         fontsize (numeric): font size for x and y tick labels and axis labels.
         xlim (list): limits for x-axis.
         ylim (list): limits for y-axis.
+        xticks (list): position of x-axis labels.
         adjustBottom (boolean) = True if bottom margin of figure needs adjustment.
         shiftBottomAxis (numeric) = shift x-axis by this much.
         xbounds (list): chop off x-axis beyond these bounds.
@@ -567,14 +600,14 @@ def box_plot (data,
     
     adjust_axis (plt_fig,
                  ph,
-                 xlabels = xlabels,
-                 ylabels = ylabels,
+                 xticklabels = xlabels,
+                 yticklabels = ylabels,
                  xlabel = xlabel,
                  ylabel = ylabel,
                  fontsize = fontsize,
                  xlim = xlim,
                  ylim = ylim,
-                 xind = xticks,
+                 xticks = xticks,
                  adjustBottom = adjustBottom,
                  shiftBottomAxis = shiftBottomAxis,
                  xbounds = xbounds)
@@ -636,8 +669,8 @@ def multi_histogram_plot (samples,
                  ph,
                  xlabel = xlabel,
                  ylabel = ylabel,
-                 xlabels = xlabels,
-                 ylabels = ylabels,
+                 xticklabels = xlabels,
+                 yticklabels = ylabels,
                  fontsize = fontsize,
                  xlim = xlim,
                  ylim = ylim)
@@ -726,6 +759,8 @@ def pie_plot (data,
         pct (str): format for percentage labels.
         pctdist (numeric): distance of pct labels from center.
         colors (list): colors for pie slices.
+        edgecolor (str): color of wedge edges.
+        edgewidth (numeric): width of wedge edges.
         show (boolean): True to show plot, otherwise plot is not shown.
         figdir (str): directory to save figure in.
         figname (str): name of file to save figure in.
@@ -908,21 +943,41 @@ def network_plot (edges,
 
 def adjust_axis (plt_fig,
                  ph,
-                 xlabels = None,
-                 ylabels = None,
+                 xticklabels = None,
+                 yticklabels = None,
                  xlabel = None,
                  ylabel = None,
                  fontsize = 12,
                  xlim = None,
                  ylim = None,
-                 xind = None,
-                 yind = None,
+                 xticks = None,
+                 yticks = None,
                  yMinorTicks = None,
                  bottomPos = None,
                  adjustBottom = False,
                  shiftBottomAxis = None,
                  xbounds = None):
+    """Adjust figure axes.
+
+    Args:
+        plt_fig (pyplot.figure): figure handle.
+        ph (pyplot.subplot): subplot handle.
+        xticklabels (list): labels for major ticks on x-axis.
+        yticklabels (list): labels for major ticks on y-axis.
+        xlabel (str): label for x-axis.
+        ylabel (str): label for y-axis.
+        fontsize (numeric): font size for x and y tick labels and axis labels.
+        xlim (list): limits on x-axis.
+        ylim (list): limits on y-axis.
+        xticks (list): x-tick positions.
+        yticks (list): y-tick positions.
+        yMinorTicks (numeric): number of minor ticks between two major ticks on y-axis.
+        bottomPos (numeric): adjust lower x-axis to this vertical position.
+        adjustBottom (boolean) = adjust bottom margin of figure.
+        shiftBottomAxis (numeric) = shift lower x-axis by this much.
+        xbounds (list): chop off x-axis beyond these bounds.
     
+    """
     if adjustBottom:
         plt_fig.subplots_adjust(bottom = adjustBottom)
     if shiftBottomAxis:
@@ -938,22 +993,22 @@ def adjust_axis (plt_fig,
     ph.get_xaxis().set_tick_params(which='both', bottom=False, top=False, labelbottom=False)
     ph.xaxis.set_ticks_position('bottom')
     ph.get_xaxis().set_tick_params(which='both', direction='out')
-    if xlabels:
-        if xind:
-            ph.set_xticks(xind)
+    if xticklabels:
+        if xticks:
+            ph.set_xticks(xticks)
         else:
-            ph.set_xticks(xlabels)
-        ph.set_xticklabels(xlabels)
+            ph.set_xticks(xticklabels)
+        ph.set_xticklabels(xticklabels)
     ph.get_yaxis().set_tick_params(which='both', right=False, direction='out')
     ph.yaxis.set_ticks_position('left')
-    if ylabels:
-        if yind:
-            ph.set_yticks(yind)
+    if yticklabels:
+        if yticks:
+            ph.set_yticks(yticks)
         else:
-            ph.set_yticks(ylabels)
-        if all(n % 1 == 0 for n in ylabels):
-            ylabels = [int(n) for n in ylabels]
-        ph.set_yticklabels(ylabels)
+            ph.set_yticks(yticklabels)
+        if all(n % 1 == 0 for n in yticklabels):
+            yticklabels = [int(n) for n in yticklabels]
+        ph.set_yticklabels(yticklabels)
     if yMinorTicks:
         yticks = ph.get_yticks(minor=False)
         minorLocator = MultipleLocator( (yticks[1] - yticks[0]) / (yMinorTicks + 1) )
@@ -965,12 +1020,18 @@ def adjust_axis (plt_fig,
     ph.spines["top"].set_visible(False)
     ph.spines['right'].set_visible(False)
     if bottomPos:
-        ph.spines['bottom'].set_position(('data',bottomPos))
+        ph.spines['bottom'].set_position(('data', bottomPos))
     for item in ([ph.xaxis.label, ph.yaxis.label] + ph.get_xticklabels() + ph.get_yticklabels()):
         item.set_fontsize(fontsize)
 
 def save_figure (figdir, figname):
+    """Save last created figure to file.
+
+    Args:
+        figdir (str): directory to save figure in.
+        figname (str): name of file to save figure in.
     
+    """
     figdir_eps = figdir / 'eps_figures'
     figdir_pdf = figdir / 'pdf_figures'
     figdir_png = figdir / 'png_figures'
@@ -985,7 +1046,13 @@ def save_figure (figdir, figname):
     plt.savefig(os.path.join(figdir_png, figname+".png"), bbox_inches='tight')
 
 def show_figure (plt_fig, show = True):
+    """Show or close figure.
+
+    Args:
+        plt_fig (pyplot.figure): figure handle.
+        show (bool): if true, figure is shown, otherwise closed.
     
+    """
     if show:
         plt.show(plt_fig)
     else:

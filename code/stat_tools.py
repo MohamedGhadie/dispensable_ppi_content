@@ -1,34 +1,38 @@
+#----------------------------------------------------------------------------------------
+# Modules for statistical computations.
+#----------------------------------------------------------------------------------------
+
 import time
 import numpy as np
 import scipy.stats as stats
 from itertools import compress
 from collections import Counter
 
-def fisher_test(row1, row2):
+def fisher_test (row1, row2):
     """Calculate statistical significance for a contingency table using Fisher's exact
-        test
+        test.
 
     Args:
-        row1 (list): first row of contingency table
-        row2 (list): second row of contingency table
+        row1 (array): first row of contingency table.
+        row2 (array): second row of contingency table.
     
     """
     oddsratio, pvalue = stats.fisher_exact([row1, row2])
     print("Fisher's exact test, p-value = %g (odds ratio = %g)" % (pvalue, oddsratio))
 
-def t_test(sample1, sample2):
+def t_test (sample1, sample2):
     """Calculate statistical significance for difference in mean between two data samples
         of unequal variances using two-sided t-test.
 
     Args:
-        sample1 (array): first sample
-        sample2 (array): second sample
+        sample1 (array): first sample.
+        sample2 (array): second sample.
     
     """
     _, pvalue = stats.ttest_ind(sample1, sample2, equal_var = False)
     print("t test, p-value = %g" % pvalue)
 
-def perm_test(sample1, sample2, iter):
+def perm_test (sample1, sample2, iter):
     """Calculate statistical significance for difference in mean between two data samples
         using permutation test.
 
@@ -47,9 +51,9 @@ def perm_test(sample1, sample2, iter):
             k += 1
     print("permutation test, p-value = %g (%d iterations)" % (k / iter, iter))
 
-def bootstrap_test(sample1, sample2, iter = 10000):
+def bootstrap_test (sample1, sample2, iter = 10000):
     """Calculate statistical significance for difference in mean between two data samples
-        using bootstrap test.
+        by bootstrapping the data samples.
 
     Args:
         sample1 (array): first sample.
@@ -75,8 +79,8 @@ def normality_test (sample, alpha):
     """Check if a data sample has a normal distribution.
 
     Args:
-        sample (array): sample to be checked.
-        alpha (float): cutoff for reporting significant p-value.
+        sample (array): data sample.
+        alpha (float): p-value cutoff for reporting statistical significance.
     
     """
     if len(sample) > 7:
@@ -96,7 +100,7 @@ def equal_variance_test (sample1, sample2, alpha):
     Args:
         sample1 (array): first sample.
         sample2 (array): second sample.
-        alpha (float): cutoff for reporting significant p-value.
+        alpha (float): p-value cutoff for reporting statistical significance.
     
     """
     _, pvalue = stats.levene(sample1, sample2)
@@ -110,10 +114,11 @@ def sderror (s):
     """Calculate standard error of the mean.
 
     Args:
-        s (list): population sample.
+        s (array): data sample.
     
     Returns:
-        float: standard error of the mean.
+        float
+
     """
     l = len(s)
     if l:
@@ -129,13 +134,24 @@ def sderror_on_fraction (k, n):
         n (int): denominator (sample size).
     
     Returns:
-        float: standard error.
+        float
+
     """
     p = k / n
     return np.sqrt(p * (1 - p) / n)
 
 def proportion_CI (k, n, conf = 95.0):
+    """Calculate the confidence interval on a proportion k/n.
+
+    Args:
+        k (int): numerator.
+        n (int): denominator (sample size).
+        conf (numeric): % confidence interval.
     
+    Returns:
+        float, float
+
+    """
     mult = { 90.0 : 1.645,
              95.0 : 1.960,
              97.5 : 2.240,
@@ -152,7 +168,18 @@ def proportion_CI (k, n, conf = 95.0):
         return np.nan, np.nan
 
 def proportion_ratio_CI (k1, n1, k2, n2, a=1, b=0, c=1, d=0, conf = 95.0):
+    """Calculate the confidence interval on a ratio of two linear functions of proportions 
+        (a * (k1/n1) + b) / (c * (k2/n2) + d).
+
+    Args:
+        k1, k2, n1, n2 (int): proportion numerators and denominators.
+        a, b, c, d (float): prportion linear function parameters.
+        conf (numeric): % confidence interval.
     
+    Returns:
+        float, float
+
+    """
     mult = { 90.0 : 1.645,
              95.0 : 1.960,
              97.5 : 2.240,
@@ -170,7 +197,18 @@ def proportion_ratio_CI (k1, n1, k2, n2, a=1, b=0, c=1, d=0, conf = 95.0):
         return np.nan, np.nan
 
 def proportion_sum_CI (k1, n1, k2, n2, a=1, b=1, conf = 95.0):
+    """Calculate the confidence interval on a sum of two proportions 
+        a(k1/n1) + b(k2/n2).
+
+    Args:
+        k1, k2, n1, n2 (int): proportion numerators and denominators.
+        a, b (float): prportion coefficients.
+        conf (numeric): % confidence interval.
     
+    Returns:
+        float, float
+
+    """
     mult = { 90.0 : 1.645,
              95.0 : 1.960,
              97.5 : 2.240,
@@ -195,25 +233,31 @@ def confidence_interval (n,
                          pvalues,
                          alpha = 0.05,
                          eventname = 'success',
-                         expname = 'experiments',
-                         showfig = True,
-                         figdir = None,
-                         prefigname = 'CI'):
-     
+                         expname = 'experiments'):
+    """Calculate the confidence interval on a proportion k_obs/n using a Binomial 
+        distribution produced from Bernoulli trials.
+
+    Args:
+        n (int): proportion denominator.
+        k_obs (int): proportion numerator.
+        pvalues (array): probabilities of success used for Bernoulli trials.
+        alpha (float): p-value cutoff for reporting statistical significance.
+        eventname (str): name of success event in the Bernoulli trial (for display purpose).
+        expname (str): name of experiment on which Bernoulli trials are performed (for display purpose).
+    
+    Returns:
+        float, float
+
+    """
     s = time.time()
     prob1, prob2 = [], []
     i1 = i2 = 0
     found1 = found2 = False
     if k_obs > n / 2:
         pvalues = list(reversed(pvalues))
-    prev1, prev2 = binomial_prob (n,
-                                  k_obs,
-                                  pvalues[0])
+    prev1, prev2 = binomial_prob (n, k_obs, pvalues[0])
     for i, p in enumerate(pvalues):
-        bp1, bp2 = binomial_prob (n,
-                                  k_obs,
-                                  p,
-                                  itr = 100000)
+        bp1, bp2 = binomial_prob (n, k_obs, p, itr = 100000)
         if (prev1 <= alpha <= bp1) or (bp1 <= alpha <= prev1):
             i1 = i if abs(bp1 - alpha) <= abs(prev1 - alpha) else i - 1
             found1 = True
@@ -224,10 +268,9 @@ def confidence_interval (n,
         prob2.append(bp2)
         if found1 and found2:
             break
-        prev1 = bp1
-        prev2 = bp2
-    prob1 = prob1[: i1 + 1]
-    prob2 = prob2[: i2 + 1]
+        prev1, prev2 = bp1, bp2
+    prob1 = prob1[:i1 + 1]
+    prob2 = prob2[:i2 + 1]
     
     lower_p, upper_p = sorted( ( pvalues[i1], pvalues[i2] )) 
     print('P(≤%d %s events) and P(≥%d %s events) among %d %s ' % (k_obs,
@@ -242,11 +285,20 @@ def confidence_interval (n,
                                                                               (time.time() - s) / 60))
     return lower_p, upper_p
 
-def binomial_prob (n,
-                   kobs,
-                   p,
-                   itr = 10000):
-    
+def binomial_prob (n, kobs, p, itr = 10000):
+    """Calculate the probability of observing ≤ kobs or ≥ kobs successes in a Bernoulli 
+        experiment with probability of success p.
+
+    Args:
+        n (int): number of trials in experiment.
+        kobs (int): number of successes observed in experiment.
+        p (float): probability of success used in Bernoulli trials.
+        itr (int): number of Bernoulli trials.
+
+    Returns:
+        float, float
+
+    """
     result = []
     k = np.random.binomial(n, p, size = itr)
     for kmin, kmax in [(0, kobs), (kobs, n)]:
@@ -256,15 +308,11 @@ def binomial_prob (n,
         elif p == 1:
             bp = 1 if kmax >= n else 0
         else:
-            bp = sum( (k >= kmin) & (k <= kmax) ) / itr
+            bp = sum((k >= kmin) & (k <= kmax)) / itr
         result.append(bp)
     return result
 
-def binomial_test_diff_in_fraction (n1,
-                                    n2,
-                                    k1,
-                                    k2,
-                                    itr = 10000):
+def binomial_test_diff_in_fraction (n1, n2, k1, k2, itr = 10000):
     """Calculate statistical significance for difference in two fractions by sampling from 
     binomial distributions having equal probabilities of success (p).
 
@@ -276,17 +324,9 @@ def binomial_test_diff_in_fraction (n1,
         itr (int): number of resamplings.
     
     """
-    binomial_test_diff_in_fraction_product ([ n1 ],
-                                            [ n2 ],
-                                            [ k1 ],
-                                            [ k2 ],
-                                            itr = itr)
+    binomial_test_diff_in_fraction_product ([n1], [n2], [k1], [k2], itr = itr)
 
-def binomial_test_diff_in_fraction_product (n1,
-                                            n2,
-                                            k1,
-                                            k2,
-                                            itr = 10000):
+def binomial_test_diff_in_fraction_product (n1, n2, k1, k2, itr = 10000):
     """Calculate statistical significance for difference in two fractions, each being the 
     product of multiple fractions, by sampling from binomial distributions having equal 
     probabilities of success (p).
@@ -312,8 +352,20 @@ def binomial_test_diff_in_fraction_product (n1,
     p_value = sum( np.abs(frac1 - frac2) >= obs_diff ) / itr
     print("binomial sampling test, p-value = %g (%d iterations)" % (p_value, itr))
 
-def compress_data(xpos, ypos, xstart = 0, binwidth = 0.1, perbin = 0):
-    
+def compress_data (xpos, ypos, xstart = 0, binwidth = 0.1, perbin = 0):
+    """Compress y-axis data based on x-axis binning.
+
+    Args:
+        xpos (array): x-axis data points.
+        ypos (array): y-axis data points.
+        xstart (numeric): starting point of first bin on x-axis.
+        binwidth (numeric): bin width on x-axis.
+        perbin (int): maximum number of data points compressed per bin.
+
+    Returns:
+        float, float, float, float, list: x-data means, y-data means, x-data SEM, y-data SEM, bin borders.
+
+    """
     xposmax = max(xpos)
     xmin, xmax = xstart, xstart + binwidth
     xmean, ymean, xerr, yerr, bins = [], [], [], [], []
@@ -341,7 +393,17 @@ def compress_data(xpos, ypos, xstart = 0, binwidth = 0.1, perbin = 0):
     return xmean, ymean, xerr, yerr, bins
 
 def round_data (data, w = 1, maxVal = np.inf):
-    
+    """Round data points.
+
+    Args:
+        data (array): data points to be rounded.
+        w (numeric): rounding interval.
+        maxVal (numeric): maximum rounded value.
+
+    Returns:
+        list: rounded data.
+
+    """
     rounded = []
     for d in data:
         if d <= maxVal - w/2:
@@ -351,14 +413,33 @@ def round_data (data, w = 1, maxVal = np.inf):
     return rounded
 
 def pdf (data):
-    
+    """Produce a discrete density distribution for a sample of data.
+
+    Args:
+        data (array): data points.
+
+    Returns:
+        array, array: density distribution, unique data points.
+
+    """
     dataCount = Counter(data)
-    x = sorted(dataCounter.keys())
+    x = np.array(sorted(dataCounter.keys()))
     dens = np.array( [dataCount[d] for d in x] )    
     return dens/sum(dens), x
 
 def cont_pdf (data, minVal = None, maxVal = None, w = 1):
-    
+    """Produce a continuous density distribution for a sample of data.
+
+    Args:
+        data (array): data points.
+        minVal (numeric): starting point of density distribution.
+        maxVal (numeric): ending point of density distribution.
+        w (numeric): interval between data point.
+
+    Returns:
+        array, array: density distribution, unique data points.
+
+    """
     dataCount = Counter(data)
     k = dataCount.keys()
     if minVal is None:

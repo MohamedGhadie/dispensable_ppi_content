@@ -14,9 +14,9 @@ def produce_uniqueGene_swissProtIDs (inPath, geneMapFile, outPath):
         with other Swiss-Prot IDs.
 
     Args:
-        inPath (str): path to file containing list of Swiss-Prot IDs.
-        geneMapFile (str): path to file containing dictionary of uniProt ID gene names.
-        outPath (str): path to save list of Swiss-Prot IDs with unique gene names.
+        inPath (Path): path to file containing list of Swiss-Prot IDs.
+        geneMapFile (Path): path to file containing dictionary of uniProt ID gene names.
+        outPath (Path): path to save list of Swiss-Prot IDs with unique gene names.
 
     """
     with open(inPath, 'r') as f:
@@ -35,10 +35,10 @@ def produce_uniqueGene_sequences (inPath,
     """Remove sequences with either no gene name or a gene name shared with other sequences.
 
     Args:
-        inPath (str): path to file containing proteome sequences
-        uniqueGeneSwissProtIDFile (str): path to file containing list of Swiss-Prot IDs with unique gene names
-        geneMapFile (str): file path containing dictionary of Swiss-Prot ID gene names
-        outPath (str): file path to save protein sequences with unique gene names
+        inPath (Path): path to file containing proteome sequences
+        uniqueGeneSwissProtIDFile (Path): path to file containing list of Swiss-Prot IDs with unique gene names
+        geneMapFile (Path): file path containing dictionary of Swiss-Prot ID gene names
+        outPath (Path): file path to save protein sequences with unique gene names
 
     """
     with open(uniqueGeneSwissProtIDFile, 'r') as f:
@@ -55,8 +55,8 @@ def produce_proteinSeq_dict (inPath, outPath):
     """Make a dictionary of sequences.
 
     Args:
-        inPath (str): path to sequence file in fasta format.
-        outPath (str): path to save output pickle file to.
+        inPath (Path): path to sequence file in fasta format.
+        outPath (Path): path to save output pickle file to.
 
     """
     s = list(SeqIO.parse(str(inPath), 'fasta'))
@@ -72,9 +72,9 @@ def produce_uniprotID_dict(inPath, spList, outPath):
     Only use Swiss-Prot proteins.
 
     Args:
-        inPath (str): path to UniProt ID mapping file.
-        spList (str): path to Swiss-Prot ID list file.
-        outPath (str): path to save output pickle file to.
+        inPath (Path): path to UniProt ID mapping file.
+        spList (Path): path to Swiss-Prot ID list file.
+        outPath (Path): path to save output pickle file to.
 
     """
     with open(spList, 'r') as f:
@@ -96,9 +96,9 @@ def produce_geneName_dict(inPath, spList, outPath):
     Only use Swiss-Prot proteins.
 
     Args:
-        inPath (str): path to UniProt ID mapping file.
-        spList (str): path to Swiss-Prot ID list file.
-        outPath (str): path to save output pickle file to.
+        inPath (Path): path to UniProt ID mapping file.
+        spList (Path): path to Swiss-Prot ID list file.
+        outPath (Path): path to save output pickle file to.
 
     """
     with open(spList, 'r') as f:
@@ -117,9 +117,9 @@ def produce_isoform_geneName_dict(geneMapFile, isoformFile, outPath):
     """Make a map of isoform UniProt IDs to gene names.
 
     Args:
-        geneMapFile (str): path to file containing gene name dict for reference UniProt IDs.
-        isoformFile (str): path to file containing list of all isoform Swiss-Prot IDs.
-        outPath (str): path to save gene name dict for all isoforms. 
+        geneMapFile (Path): path to file containing gene name dict for reference UniProt IDs.
+        isoformFile (Path): path to file containing list of all isoform Swiss-Prot IDs.
+        outPath (Path): path to save gene name dict for all isoforms. 
 
     """
     isoformData = pd.read_table(isoformFile, sep="\t")
@@ -137,8 +137,8 @@ def produce_protein_interaction_dict (inPath, outPath):
     """Make a dictionary of protein interaction partners.
 
     Args:
-        inPath (str): path to tab-delimited file containing protein-protein interactions.
-        outPath (str): path to save output pickle file to.
+        inPath (Path): path to tab-delimited file containing protein-protein interactions.
+        outPath (Path): path to save output pickle file to.
 
     """ 
     PPIs = pd.read_table(inPath, sep="\t")
@@ -157,8 +157,8 @@ def produce_protein_chain_dict (inPath, outPath):
     """Make a dictionary of protein mapping PDB chains.
 
     Args:
-        inPath (str): path to tab-delimited file containing protein-chain mapping.
-        outPath (str): path to save output pickle file to.
+        inPath (Path): path to tab-delimited file containing protein-chain mapping.
+        outPath (Path): path to save output pickle file to.
 
     """
     chainMap = pd.read_table(inPath, sep="\t")
@@ -173,8 +173,8 @@ def produce_protein_chain_alignment_dict (inPath, outPath):
     """Make a dictionary of protein-chain alignments.
 
     Args:
-        inPath (str): path to file containing protein-chain alignment table.
-        outPath (str): path to save output pickle file to.
+        inPath (Path): path to file containing protein-chain alignment table.
+        outPath (Path): path to save output pickle file to.
 
     """
     chainMap = read_list_table(inPath, ["Qpos", "Spos"], [int, int], '\t')
@@ -192,8 +192,8 @@ def produce_chain_dict (inPath, outPath):
     """Produce a dictionary of chain IDs associated with each PDB ID. 
 
     Args:
-        inPath (str): path to file containing list of chain IDs.
-        outPath (str): path to save pickle file to.
+        inPath (Path): path to file containing list of chain IDs.
+        outPath (Path): path to save pickle file to.
 
     """
     with open(inPath, 'r') as fin:
@@ -212,9 +212,9 @@ def produce_chain_strucRes_dict (inPath, outPath):
     """Produce a dictionary of labels for chain residue positions associated with 3D coordinates. 
 
     Args:
-        inPath (str): path to file containing PDB chain residue labels.
+        inPath (Path): path to file containing PDB chain residue labels.
                       See https://cdn.rcsb.org/etl/kabschSander/ss_dis.txt.gz
-        outPath (str): path to save pickle file to.
+        outPath (Path): path to save pickle file to.
 
     """
     s = list( SeqIO.parse( str(inPath), 'fasta') )
@@ -230,8 +230,8 @@ def produce_chainSeq_dict (inPath, outPath):
     """Make a dictionary of PDB chain sequences.
 
     Args:
-        inPath (str): path to chain sequence file in fasta format.
-        outPath (str): path to save output pickle file to.
+        inPath (Path): path to chain sequence file in fasta format.
+        outPath (Path): path to save output pickle file to.
 
     """
     s = list(SeqIO.parse(str(inPath), 'fasta'))
@@ -246,7 +246,7 @@ def produce_substitution_matrix (name, outPath):
 
     Args:
         name (str): name of substitution table to use.
-        outPath (str): path to save output pickle file to.
+        outPath (Path): path to save output pickle file to.
 
     """
     matrices = {'PAM30': MatrixInfo.pam30,
@@ -265,8 +265,8 @@ def produce_rnaToProtein_refseqID_dict (inPath, outPath):
     """Make a map of RNA RefSeq IDs to protein RefSeq IDs.
 
     Args:
-        inPath (str): path to RefSeq ID mapping file.
-        outPath (str): path to save output pickle file to.
+        inPath (Path): path to RefSeq ID mapping file.
+        outPath (Path): path to save output pickle file to.
 
     """
     idMap = {}

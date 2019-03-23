@@ -1,3 +1,7 @@
+#----------------------------------------------------------------------------------------
+# Modules for protein structural annotation.
+#----------------------------------------------------------------------------------------
+
 import os
 import io
 import time
@@ -6,7 +10,6 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from random import sample
-from Bio.PDB import PDBParser
 from simple_tools import create_dir, isolate_pairs, merge_list_pairs
 from text_tools import read_list_table
 from interactome_tools import (write_chain_annotated_interactome,
@@ -30,7 +33,14 @@ from pdb_tools import (allow_pdb_downloads,
 known_interfaces = {}
 
 def load_dictionaries (chainSequenceFile = None, chainStrucResLabelFile = None):
-    
+    """Load dictionaries containing PDB chain sequence data.
+
+    Args:
+        chainSequenceFile (Path): path to file containing PDB chain sequence dictionary.
+        chainStrucResLabelFile (Path): path to file containing PDB chain labels for residues 
+                                        with available 3D coordinates.
+
+    """
     if chainSequenceFile:
         load_pdbtools_chain_sequences (chainSequenceFile)
     if chainStrucResLabelFile:
@@ -41,11 +51,19 @@ def clear_interfaces ():
     
     """
     global known_interfaces
-    print('\tclearing known interfaces dictionary')
+    print('\t' + 'clearing known interfaces dictionary')
     known_interfaces.clear()
 
 def produce_alignment_evalue_dict (inPath, outPath, method = 'min'):
-    
+    """Produce dictionary of protein-chain sequence alignment e-values.
+
+    Args:
+        inPath (Path): path to tab-delimited file containing sequence alignments.
+        outPath (Path): file path to save alignment e-values to.
+        method (str): method for combining e-values from multiple alignments for the same 
+                        protein-chain pair, 'min' or 'mean'.
+
+    """
     chainMap = pd.read_table(inPath, sep='\t')
     evalueDict = {}
     if method is 'min':
@@ -72,28 +90,29 @@ def locate_alignments (inPath,
                        outPath,
                        resMatch = False,
                        pausetime = 0):
-    """Transform alignement matching sequences to query and subject
-        sequence residue positions.
+    """Transform sequence alignments to sequence residue positions.
 
     Args:
-        inPath (str): directory containing alignment table.
-        pausetime (int): pausing time between locating alignments on queries and subjects.
-        outPath (str): directory to save alignment residue positions to.
+        inPath (Path): path to tab-delimited file containing sequence alignment table.
+        outPath (Path): file path to save processed alignment table to.
+        resMatch (bool): if True, residues must match for positions to be considered aligned.
+        pausetime (numeric): pausing time in seconds between locating alignments on 
+                                protein sequences and chain sequences.
 
     """
     alignments = pd.read_table(inPath, sep="\t")
-    print('\t%d alignments to locate' % len(alignments))
+    print('\t' + '%d alignments to locate' % len(alignments))
     
-    print('\tlocating alignments on query sequences')
+    print('\t' + 'locating alignments on query sequences')
     alignments["Qpos"] = alignments.apply(lambda x: locate_alignment(x["Qseq"],
                                                                      x["Sseq"],
                                                                      x["Qstart"],
                                                                      resMatch = resMatch), axis=1)
     
-    print('\tpausing for %d seconds before locating alignments on PDB sequences' % pausetime)
+    print('\t' + 'pausing for %d seconds before locating alignments on chain sequences' % pausetime)
     time.sleep(pausetime)
     
-    print('\tlocating alignments on PDB sequences')
+    print('\t' + 'locating alignments on PDB sequences')
     alignments["Spos"] = alignments.apply(lambda x: locate_alignment(x["Sseq"],
                                                                      x["Qseq"],
                                                                      x["Sstart"],
@@ -104,23 +123,20 @@ def locate_alignments (inPath,
     alignments["Spos"] = alignments["Spos"].apply(lambda x: ','.join(map(str, x)))
     alignments.to_csv(outPath, index=False, sep='\t')
 
-def locate_alignment (Qseq,
-                      Sseq,
-                      Qstart,
-                      ResMatch = False):
-    """Transform a single alignement matching sequence to query sequence residue positions.
+def locate_alignment (Qseq, Sseq, Qstart, resMatch = False):
+    """Transform single sequence alignment to positions on query sequence.
 
     Args:
         Qseq (str): query sequence.
         Sseq (str): subject sequence.
         Qstart (int): alignment start position on query sequence.
-        ResMatch (boolean): True if aligned positions must have same residue, otherwise False.
+        resMatch (bool): if True, residues must match for positions to be considered aligned.
     
     Returns:
-        List: matching residue positions in query sequence.
+        list
 
     """
-    if ResMatch:
+    if resMatch:
         matchPos = [i for i, ch in enumerate(Qseq) if (ch != '-') and (Sseq[i] == ch)]
     else:
         matchPos = [i for i, ch in enumerate(Qseq) if (ch != '-') and (Sseq[i] != '-')]
@@ -132,31 +148,32 @@ def locate_alignment (Qseq,
         return [pos + Qstart - gaps for pos, gaps in zip(matchPos, numGaps)]
                                  
 def map_positions (refPos, alignPos, pos):
-    """Map a list of reference positions to new positions given an allignment.
+    """Map a list of reference positions to their aligned positions.
 
     Args:
-        refPos (list): aligned reference positions.
-        alignPos (list): aligned new positions.
+        refPos (list): reference positions.
+        alignPos (list): positions aligning with reference positions.
         pos (list): reference positions to map.
     
     Returns:
-        tuple: mapped positions and fraction of those mapped through allignment.
+        list, numeric: mapped positions, fraction of positions mapped.
 
     """
     mappedPos = [alignPos[refPos.index(i)] for i in pos if i in refPos]
-    frac = round( len(mappedPos) / len(pos), 2)
+    frac = round(len(mappedPos) / len(pos), 2)
     return mappedPos, frac
 
 def produce_chain_annotated_interactome (inPath,
                                          proteinChainsFile,
                                          outPath,
                                          alignmentEvalueFile = None):
-    """Annotate interacting proteins with pairs of chains from the same structure
+    """Annotate protein-protein interactions (PPIs) with chain pairs aligned to protein sequences.
 
     Args:
-        inPath(): file directory containing table of protein-protein interactions
-        chainMapFile (str): file directory containing dict of chains mapping to each protein
-        outPath (str): file directory to save chain-annotated interactome.
+        inPath (Path): path to tab-deleimited file containing PPIs.
+        proteinChainsFile (Path): path to file containing dict of chains aligned to each protein.
+        outPath (Path): file path to save chain-annotated interactome.
+        alignmentEvalueFile (Path): dictionary of protein-chain sequence alignment e-values.
 
     """
     annotatedInteractome = pd.read_table(inPath, sep="\t")
@@ -184,15 +201,16 @@ def sameStruct_mapping_chains (protein1,
                                protein2,
                                proteinChains,
                                alignmentEvalues = None):
-    """Identify same-structure chain pairs mapping to two interacting proteins
+    """Identify same-structure chain pairs mapping onto two interacting proteins.
 
     Args:
-        protein1 (str): ID of first interacting protein
-        protein2 (str): ID of second interacting protein
-        proteinChains (dict): dict of chains mapping to each protein
+        protein1 (str): ID of first interacting protein.
+        protein2 (str): ID of second interacting protein.
+        proteinChains (dict): dict of chains mapping to each protein.
+        alignmentEvalues (dict): e-values for protein-chain sequence alignment.
 
     Returns:
-        List: list of same-structure chain pairs mapping to the protein-protein interaction
+        list
 
     """
     chainPairs = []
@@ -218,11 +236,16 @@ def sameStruct_mapping_chains (protein1,
             return sortedPairs   
     return chainPairs
 
-def filter_chain_annotations(inPath,
-                             evalue,
-                             chainCoverage,
-                             outPath):
-    
+def filter_chain_annotations (inPath, evalue, chainCoverage, outPath):
+    """Filter protein chain annotations by alignment e-value and chain sequence coverage.
+
+    Args:
+        inPath (Path): path to tab-deleimited file containing protein-chain alignments.
+        evalue (numeric): alignment e-value cutoff.
+        chainCoverage (numeric): alignment chain coverage cutoff (between 0 and 1).
+        outPath (Path): file path to save filtered alignments to.
+
+    """
     chainMap = pd.read_table(inPath, sep='\t')
     chainMap = chainMap[chainMap["Expect"] < evalue]
     chainMap = chainMap[(chainMap["Send"] - chainMap["Sstart"])
@@ -233,7 +256,14 @@ def filter_chain_annotations(inPath,
     chainMap.to_csv(outPath, index=False, sep='\t')
 
 def filter_chain_annotations_by_protein (inPath, proteins, outPath):
-    
+    """Filter protein chain annotations by proteins.
+
+    Args:
+        inPath (Path): path to tab-deleimited file containing protein-chain alignments.
+        proteins (list): proteins to be selected.
+        outPath (Path): file path to save filtered alignments to.
+
+    """
     with io.open(inPath, "r", errors='ignore') as f, io.open(outPath, "w") as fout:
         headers = f.readline()
         fout.write( headers )
@@ -262,20 +292,28 @@ def produce_interface_annotated_interactome (inPath,
                                              outPath,
                                              downloadPDB = True,
                                              suppressWarnings = False):
-    """Map interaction interfaces onto protein-protein interaction network.
+    """Map interaction interfaces onto chain-annotated interactome.
 
     Args:
-        inPath (str): file directory containing protein interaction network.
-        pdbDir (str): directory containing pdb structure files.
-        chainMapFile (str): file directory containing table of chains mapping onto each protein.
-        interfaceFile (str): file directory containing known interfaces of each chain with its
-                                binding chain. Newly calculated interfaces are added to this file.
-        chainStrucResFile (str): file directory containing dict of labels for structured 
-                                    residues that are part of SEQRES.
-        numinf (int): number of chaninPairs to use for interface mapping.
-        rnd (boolean): True to randomly select chain pairs from PPI annotation list 
-                        for interface mapping.
-        outPath (str): file directory to save interface-annotated interactome to.
+        inPath (Path): path to file containing chain-annotated interactome.
+        pdbDir (Path): file directory containing pdb structures.
+        chainSeqFile (Path): path to file containing dictionary of PDB chain sequences.
+        chainMapFile (Path): path to tab-delimited file containing protein-chain alignments.
+        interfaceFile (Path): path to file containing already calculated chain-pair interfaces.
+                                Newly calculated interfaces are added to this file.
+        chainStrucResFile (Path): path to file containing dict of labels for chain sequence 
+                                    positions associated with 3D coordinates.
+        maxInterfaces (int): maximum number of interfaces mapped onto single PPI from structural models.
+        maxAttempts (int): maximum number of chain-pair annotations per PPI scanned for interface.
+        rnd (bool): if True, randomly select chain pairs from PPI chain-pair annotation list,
+                    otherwise done by order.
+        mapCutoff (numeric): minimum fraction of interface residues mapping onto protein 
+                            required for interface to be selected.
+        bindingDist (numeric): maximum distance in Angstroms allowed between interface residues
+                                of two binding chains.
+        outPath (Path): file path to save interface-annotated interactome to.
+        downloadPDB (bool): if True, PDB structure downloads are allowed.
+        suppressWarnings (bool): if True, PDB warnings are suppressed.
 
     """
     global known_interfaces
@@ -284,21 +322,21 @@ def produce_interface_annotated_interactome (inPath,
     allow_pdb_downloads (downloadPDB)
     suppress_pdb_warnings (suppressWarnings)
     load_dictionaries (chainSequenceFile=chainSeqFile, chainStrucResLabelFile=chainStrucResFile)
-    print('\treading chain-annotated interactome')
+    print('\t' + 'reading chain-annotated interactome')
     interactome = read_chain_annotated_interactome(inPath)
-    print('\treading protein-chain mapping table')
+    print('\t' + 'reading protein-chain mapping table')
     chainMap = read_list_table(chainMapFile, ["Qpos", "Spos"], [int, int], '\t')
     annotatedPPIs, numPPIs = 0, len(interactome)
     
     if interfaceFile.is_file():
-        print('\tloading known chain interfaces')
+        print('\t' + 'loading known chain interfaces')
         read_chain_interfaces(interfaceFile)
     else:
-        print('creating interface file directory')
+        print('\t' + 'creating interface file directory')
         filedir, _ = os.path.split(interfaceFile)
         create_dir(filedir)
     
-    print('\tresolving interfaces for all %d PPIs' % numPPIs)
+    print('\t' + 'resolving interfaces for all %d PPIs' % numPPIs)
     interfaces = []
     for i, ppi in interactome.iterrows():
         print('\t' + 'PPI: ' + ppi.Protein_1 + ' - ' + ppi.Protein_2)
@@ -322,7 +360,7 @@ def produce_interface_annotated_interactome (inPath,
         print('\t' + '%d PPIs annotated' % annotatedPPIs)
     interactome["Interfaces"] = interfaces
     
-    print('\tfinalizing interface-annotated interactome')
+    print('\t' + 'finalizing interface-annotated interactome')
     interactome = interactome[interactome["Interfaces"].apply(lambda x: len(x[0]) > 0)].reset_index(drop=True)
     interactome.drop("Mapping_chains", axis=1, inplace=True)
     interactome["Chain_pairs"] = interactome["Interfaces"].apply(lambda x: x[2])
@@ -343,25 +381,29 @@ def map_multi_interfaces (pdbDir,
                           interfaceFile,
                           PPIcount = None,
                           numPPIs = None):
-    """Map the first n interaction interfaces passing a mapping fraction cutoff for two 
-        interacting proteins from mapping chain pairs from distinct PDB models.
+    """Map interaction interfaces onto a protein-protein interaction.
 
     Args:
-        pdbDir (str): directory containing pdb structure files.
-        protein1 (str): ID of first interacting protein.
-        protein2 (str): ID of second interacting protein.
-        chainPairs (list): list of chain pairs mapping onto the two interacting proteins.
-        chainMap (dataframe): table of chains mapping onto each protein.
-        numinf (int): number of chaninPairs to use for interface mapping.
-        rnd (boolean): True to randomly select pairs from chain pairs list for interface mapping.
-        mapCutoff (float): minimum mapping fraction needed for interface from a chain pair
-                            to be selected as the only interface.
-        interfaceFile (str): file directory containing known interfaces of each chain with its
-                                binding chain. Newly calculated interfaces are added to this file.
-    
+        pdbDir (Path): file directory containing pdb structures.
+        protein1 (str): UniProt ID of first interacting protein.
+        protein2 (str): UniProt ID of second interacting protein.
+        chainPairs (list): chain pairs mapping onto the two interacting proteins.
+        chainMap (DataFrame): protein-chain alignment table.
+        maxInterfaces (int): maximum number of interfaces mapped onto single PPI from structural models.
+        maxAttempts (int): maximum number of chain-pair annotations per PPI scanned for interface.
+        rnd (bool): if True, randomly select chain pairs from PPI chain-pair annotation list,
+                    otherwise done by order.
+        mapCutoff (numeric): minimum fraction of interface residues mapping onto protein 
+                            required for interface to be selected.
+        bindingDist (numeric): maximum distance in Angstroms allowed between interface residues
+                                of two binding chains.
+        interfaceFile (Path): path to file containing already calculated chain-pair interfaces.
+                                Newly calculated interfaces are added to this file.
+        PPIcount (int): number of PPI currently being annotated.
+        numPPIs (int): total number of PPIs annotated so far.
+
     Returns:
-        list: all interfaces between the two proteins in tuples.
-        list: mapping fraction for each two interfaces in tuples.
+        list, list, list: mapped interfaces, interface mapping coverage, structural models used.
 
     """
     numAttempts, interfacesFound, numChainPairs = 0, 0, len(chainPairs)
@@ -414,7 +456,23 @@ def map_twoside_interfaces (pdbDir,
                             bindingDist,
                             chainMap,
                             interfaceFile):
-    
+    """Map interaction interfaces from one chain-pair onto a protein-protein interaction.
+
+    Args:
+        pdbDir (Path): file directory containing pdb structures.
+        protein1 (str): UniProt ID of first interacting protein.
+        protein2 (str): UniProt ID of second interacting protein.
+        chainPair (tuple): chain pair mapping onto the two interacting proteins.
+        bindingDist (numeric): maximum distance in Angstroms allowed between interface residues
+                                of two binding chains.
+        chainMap (DataFrame): protein-chain alignment table.
+        interfaceFile (Path): path to file containing already calculated chain-pair interfaces.
+                                Newly calculated interfaces are added to this file.
+
+    Returns:
+        list, list: interfaces on first protein, interfaces on second protein.
+
+    """
     global known_interfaces
     chain1, chain2 = chainPair
     chainKey1 = chain1 + '-' + chain2
@@ -452,11 +510,11 @@ def map_twoside_interfaces (pdbDir,
         return [], []
 
 def merge_interactome_interface_annotations (inPath, outPath):
-    """Merge interface annotations for each PPI in an interactome into one tuple.
+    """Merge interface annotations for each PPI in an interactome into one interface.
 
     Args:
-        inPath (str): file directory containing interface-annotated interactome.
-        outPath (str): file directory to save merged-interface-annotated interactome to.
+        inPath (Path): path to file containing interface-annotated interactome.
+        outPath (Path): file path to save interactome with merged interfaces to.
     
     """
     interactome = read_unmerged_interface_annotated_interactome ( inPath )
@@ -467,11 +525,11 @@ def merge_interactome_interface_annotations (inPath, outPath):
     write_single_interface_annotated_interactome (interactome, outPath)
 
 def remove_duplicate_interface_annotations (inPath, outPath):
-    """Remove duplicate interfaces annotations from interactome.
+    """Remove duplicate interface annotations per PPI from interactome.
 
     Args:
-        inPath (str): file directory containing interface-annotated interactome.
-        outPath (str): file directory to save interface-annotated interactome to.
+        inPath (Path): path to file containing interface-annotated interactome.
+        outPath (Path): file path to save processed interface-annotated interactome to.
     
     """
     interactome = read_unmerged_interface_annotated_interactome ( inPath )
@@ -486,16 +544,16 @@ def remove_duplicate_interface_annotations (inPath, outPath):
     interactome = interactome.drop("Mapping_frac", axis=1)
     write_interface_annotated_interactome( outPath )
 
-def drop_duplicate_interfaces(interfaces, fractions):
-    """Remove duplicate interfaces (tuples) from a list of interfaces.
+def drop_duplicate_interfaces (interfaces, fractions):
+    """Remove duplicate interfaces from a list of interfaces.
 
     Args:
-        interfaces (list): list of interfaces in tuple form.
-        fractions (list): mapping fractions associated with the interfaces.
+        interfaces (list): list of interfaces.
+        fractions (list): mapping coverage associated with interfaces.
     
     Returns:
-        list: unique interfaces.
-        list: mapping fractions associated with interfaces.
+        list, list: unique interfaces, mapping coverages.
+
     """
     uniqueInt = []
     uniqueFrac = []
@@ -505,30 +563,31 @@ def drop_duplicate_interfaces(interfaces, fractions):
             uniqueFrac.append(fractions[i])
     uniqueInt.append(interfaces[-1])
     uniqueFrac.append(fractions[-1])
-    return [uniqueInt, uniqueFrac]
+    return uniqueInt, uniqueFrac
 
-def filter_interfaces_by_frac (interfaces,
-                               fractions,
-                               cutoff):
-    """Filter interfaces (tuples) from a list of interfaces by mapping fraction. Keep
-        interfaces whose both side map with a fraction higher than a cutoff.
+def filter_interfaces_by_frac (interfaces, fractions, cutoff):
+    """Filter interfaces from a list of interfaces by mapping coverage.
 
     Args:
-        interfaces (list): list of interfaces in tuple form.
-        fractions (list): mapping fractions associated with the interfaces.
-        cutoff (float): cutoff on mapping fraction.
+        interfaces (list): list of interfaces.
+        fractions (list): mapping coverage associated with interfaces.
+        cutoff (numeric): cutoff used for both sides of interface.
     
     Returns:
-        list: unique interfaces.
-        list: mapping fractions associated with interfaces.
+        list, list: interfaces, mapping coverage.
     
     """
     selInt = [interfaces[i] for i, (a, b) in enumerate(fractions) if (a >= cutoff) and (b >= cutoff)]
     selFrac = [(a, b) for (a, b) in fractions if (a >= cutoff) and (b >= cutoff)]
-    return [selInt, selFrac]
+    return selInt, selFrac
 
 def write_chain_interfaces (outPath):
+    """Write chain interfaces to file.
+
+    Args:
+        outPath (Path): file path to save chain interfaces to.
     
+    """
     with io.open(outPath, "w") as fout:
         fout.write('\t'.join(["Chain_1", "Chain_2", "Chain1_interface"]) + '\n')
         for chainKey in sorted(known_interfaces.keys()):
@@ -540,7 +599,12 @@ def write_chain_interfaces (outPath):
             fout.write('\t'.join([chain1, chain2, interface]) + '\n')
 
 def read_chain_interfaces (inPath):
+    """Read chain interfaces from file.
+
+    Args:
+        inPath (Path): path to file containing chain interfaces.
     
+    """
     if inPath.is_file():
         known_interfaces_df = read_list_table(inPath, "Chain1_interface", int, '\t')
         for _, row in known_interfaces_df.iterrows():
@@ -561,18 +625,21 @@ def write_mutation_structure_maps (mutations,
                                    chainInterfaceFile = None,
                                    downloadPDB = True,
                                    suppressWarnings = False):
-    """Map mutations onto PDB chains and write to file the mutation, host protein, partner
-    protein, position on host protein, position on chain, PDB ID, chain_mutation 
-    (WT res, chain ID, pos on chain, mut res), partner chain.
+    """Map mutations in interface-annotated interactome onto structural models and write to file.
 
     Args:
-        mutations (DataFrame): mutations to be mapped onto PDB chains and writen to file.
-        interactomeFile (str): file directory containing interactome network.
-        chainMapFile (str): file directory containing table of chains mapping onto each protein.
-        chainSeqFile (str): file directory containing dictionary of chain sequences.
-        proteinSeqFile (str): file directory containing dictionary of protein sequences.
-        pdbDir (str): file directory containing PDB structure files.
-        outPath (str): file directory to save mapped mutations to. 
+        mutations (DataFrame): mutations to be written to file.
+        interactomeFile (Path): path to file containing interface-annotated interactome.
+        chainMapFile (Path): path to tab-delimited file containing protein-chain sequence alignments.
+        chainSeqFile (Path): path to file containing dictionary of chain sequences.
+        proteinSeqFile (Path): path to file containing dictionary of protein sequences.
+        chainStrucResFile (Path): path to file containing dict of labels for chain sequence 
+                                    positions associated with 3D coordinates.
+        pdbDir (Path): file directory containing PDB structures.
+        outPath (Path): file path to save mapped mutations to.
+        chainInterfaceFile (Path): path to file containing chain-pair interfaces.
+        downloadPDB (bool): if True, PDB structure downloads are allowed.
+        suppressWarnings (bool): if True, PDB warnings are suppressed.
 
     """
     global known_interfaces
@@ -691,7 +758,20 @@ def mutation_structure_map (strucMap,
                             chainID,
                             pos,
                             firstMap = False):
-    
+    """Return protein-chain sequence alignments that include a specific protein 
+        sequence position.
+
+    Args:
+        strucMap (DataFrame): table of protein-chain sequence alignments.
+        protein (str): protein UniProt ID.
+        chainID (str): PDB chain ID.
+        pos (int): protein sequence position to be passed through alignments.
+        firstMap (bool): if True, only first successful alignment returned.
+
+    Returns:
+        DataFrame
+
+    """
     mappings = strucMap [(strucMap["Query"] == protein) & 
                          (strucMap["Subject"] == chainID)].reset_index(drop=True)
     mappings["posMaps"] = position_map (pos, mappings)
@@ -702,7 +782,16 @@ def mutation_structure_map (strucMap,
         return mappings if not mappings.empty else None
 
 def position_map (resPos, strucMap):
-    
+    """Map a sequence position to positions through multiple sequence alignments.
+
+    Args:
+        resPos (int): reference sequence position to be mapped.
+        strucMap (DataFrame): table of protein-chain sequence alignments.
+
+    Returns:
+        array
+
+    """
     posMap = []
     for Qpos, Spos in strucMap[["Qpos", "Spos"]].values:
         if resPos in Qpos:

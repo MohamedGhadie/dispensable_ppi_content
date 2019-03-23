@@ -26,7 +26,7 @@ def create_dir (dir):
     """Create a file directory.
 
     Args:
-        dir (str): directory to create.
+        dir (Path): directory to create.
 
     """
     if len(dir) > 0:

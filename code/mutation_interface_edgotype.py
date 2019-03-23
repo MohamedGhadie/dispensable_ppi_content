@@ -1,28 +1,29 @@
+#----------------------------------------------------------------------------------------
+# Modules for mutation edgotyping.
+#----------------------------------------------------------------------------------------
+
 import io
 import numpy as np
 import pandas as pd
 from random import seed, random
 from simple_tools import reverseTuples
-    
+
 def mutation_PPI_interface_perturbations (mutations,
                                           interactome,
                                           maxInterfaces = np.inf,
                                           dist = 0):
-    """Calculate the fraction of protein interaction interfaces in whose neighborhood 
-        specified mutations occur. Neighborhood is defined within a specified number of 
-        residues.
+    """Predict PPI perturbations by mutations located at PPI interfaces.
 
     Args:
-        mutations (dataframe): table of mutations with their associated protein IDs.
-        interactome (dataframe): protein interactions annotated with interaction interfaces.
-        maxInterfaces (int): select only interaction partners with which the protein has 
-                                this number of interfaces or less.
-        dist (int): max distance measured by residue number for a mutation to be considered
-                    in the neighborhood of an interface.
+        mutations (dataframe): mutation table.
+        interactome (dataframe): interface-annotated interactome.
+        maxInterfaces (int): maximum number of interfaces allowed per interaction partner.
+        dist (int): max number of positions in protein sequence a PPI-perturbing 
+                    mutation may be from interaction interface. Set to 0 to predict only 
+                    mutations located strictly at interface as PPI-perturbing.
     
     Returns:
-        Series: list of fraction of interfaces perturbed per interaction partner for each
-                mutation.
+        list: PPI perturbations per mutation.
     
     """
     perturbations = []
@@ -34,34 +35,25 @@ def mutation_PPI_interface_perturbations (mutations,
                                                 dist = dist)
         perturbations.append(perturbs)
     return perturbations
-#     return mutations.apply(lambda x:
-#                            single_mutation_PPI_perturbs(x["Protein"],
-#                                                         interactome,
-#                                                         maxInterfaces,
-#                                                         x["Mutation_Position"],
-#                                                         dist = dist),
-#                            axis=1)
 
 def single_mutation_PPI_perturbs (protein,
                                   pos,
                                   interactome,
                                   maxInterfaces = np.inf,
                                   dist = 0):
-    """Calculate the fraction of a protein's interaction interfaces with multiple partners 
-        in whose neighborhood a mutation occurs. Neighborhood is defined within a specified  
-        number of residues. 
+    """Predict PPI perturbations by single mutation.
 
     Args:
         protein (str): protein ID.
-        interactome (dataframe): protein interactions annotated with interaction interfaces.
-        maxInterfaces (int): select only interaction partners with which the protein has 
-                                this number of interfaces or less.
         pos (int): mutation position on protein sequence.
-        dist (int): max distance measured by residue number for a mutation to be considered
-                    in the neighborhood of an interface.
+        interactome (dataframe): interface-annotated interactome.
+        maxInterfaces (int): maximum number of interfaces allowed per interaction partner.
+        dist (int): max number of positions in protein sequence a PPI-perturbing 
+                    mutation may be from interaction interface. Set to 0 to predict only 
+                    mutations located strictly at interface as PPI-perturbing.
     
     Returns:
-        list: fraction of interfaces perturbed by mutation per interaction partner.
+        list, array: interaction partners, number of interfaces perturbed per partner.
     
     """
     PPIs = interactome[(interactome[["Protein_1","Protein_2"]]==protein).any(1)
@@ -85,20 +77,22 @@ def single_mutation_PPI_perturbs (protein,
     else:
         return [], np.array([])
 
-def single_mutation_PPI_perturb (protein, pos, interfaces, dist = 0):
-    """Calculate the fraction of a protein's interaction interfaces in whose neighborhood 
-        a mutation occurs. Neighborhood is defined within a specified number of residues. 
+def single_mutation_PPI_perturb (protein,
+                                 pos,
+                                 interfaces,
+                                 dist = 0):
+    """Predict single PPI perturbation by single mutation.
 
     Args:
         protein (str): protein ID.
-        interfaces (list): protein interfaces in tuple form, with second tuple element
-                            being the partner's interface.
         pos (int): mutation position on protein sequence.
-        dist (int): max distance measured by residue number for a mutation to be considered
-                    in the neighborhood of an interface.
+        interfaces (list): interaction interfaces.
+        dist (int): max number of positions in protein sequence a PPI-perturbing 
+                    mutation may be from interaction interface. Set to 0 to predict only 
+                    mutations located strictly at interface as PPI-perturbing.
     
     Returns:
-        float: fraction of interfaces perturbed by mutation.
+        int: number of interfaces perturbed.
     
     """
     leftside = [i for i, j in interfaces]
@@ -109,7 +103,22 @@ def single_mutation_PPI_perturb (protein, pos, interfaces, dist = 0):
     return sum(onInterface)
 
 def energy_based_perturbation (perturbs, ddg, cutoff, probabilistic = False):
+    """Re-predict PPI perturbations for predicted PPI-perturbing mutations using ∆∆G.
 
+    Args:
+        perturbs (dataframe): mutation perturbations.
+        ddg (dict): mutation ∆∆G values.
+        cutoff (numeric): minimum ∆∆G required for PPI perturbation.
+        probabilistic (bool): if True, predict perturbations for PPIs with unknown ∆∆Gs 
+                                using the probability of perturbation calculated from 
+                                known ∆∆Gs.
+    
+    Returns:
+        list, int, int: perturbations,
+                        number of PPIs with known ∆∆G,
+                        number of PPIs with unknown ∆∆G.
+    
+    """
     knownDDG = unknownDDG = 0
     pertProb = sum([d > cutoff for _, _, _, _, d in ddg.values()]) / len(ddg)
     seed()
@@ -145,10 +154,13 @@ def create_perturbed_network (interactome,
     """Create network from perturbed interactome for plotting by Cytoscape software.
 
     Args:
-        interactome (DataFrame): interactome with all edges.
-        perturbations (DataFrame): interactome perturbations.
-        network_outPath (str): file directory to save edges for Cytoscape plotting.
-        nodeColor_outPath (str): file directory to save node colors for Cytoscape plotting.
+        interactome (dataframe): interactome with all edges.
+        perturbations (dataframe): interactome perturbations.
+        network_outPath (Path): file path to save edges for Cytoscape plotting.
+        nodeColor_outPath (Path): file path to save node colors for Cytoscape plotting.
+
+    Returns:
+        list, list, list, list: nodes, edges, node colors, edge colors.
     
     """
     network = pd.DataFrame()
@@ -191,7 +203,17 @@ def create_perturbed_network (interactome,
     return nodes, edges, nodeColors, network["Edge_color"].tolist()
 
 def assign_edgotypes (perturbs, mono_edgetic = False):
+    """Assign edgotypes to mutation with PPI perturbation predictions.
+
+    Args:
+        perturbs (list): mutation perturbations.
+        mono_edgetic (bool): if True, distinguish mono-edgetic mutations from other 
+                                edgetic mutations.
     
+    Returns:
+        list: mutation edgotypes.
+    
+    """
     edgotypes = []
     for pert in perturbs:
         etype = assign_edgotype (pert, mono_edgetic = mono_edgetic)
@@ -199,7 +221,17 @@ def assign_edgotypes (perturbs, mono_edgetic = False):
     return edgotypes
 
 def assign_edgotype (perturbs, mono_edgetic = False):
+    """Assign edgotype to single mutation with PPI perturbation predictions.
+
+    Args:
+        perturbs (list): mutation perturbations.
+        mono_edgetic (bool): if True, distinguish mono-edgetic mutations from other 
+                                edgetic mutations.
     
+    Returns:
+        str: mutation edgotype.
+    
+    """
     pert = []
     for p in perturbs:
         pert.append(p > 0 if not np.isnan(p) else np.nan)

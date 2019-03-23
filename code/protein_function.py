@@ -1,9 +1,12 @@
+#----------------------------------------------------------------------------------------
+# Modules for computations on protein function.
+#----------------------------------------------------------------------------------------
+
 import os
 import io
 import pickle
 import pandas as pd
 import numpy as np
-import warnings
 import subprocess
 from scipy.stats.stats import pearsonr
 from simple_tools import valid_uniprot_id, is_numeric, hamming_dist
@@ -14,23 +17,14 @@ def partner_sim (p1, p2, partners):
     Args:
         p1 (str): protein 1 ID.
         p2 (str): protein 2 ID.
-        partners (dict): dictionary containing list of partners for each protein.
+        partners (dict): dictionary containing set of partners for each protein.
     
     Returns:
-        float: fraction of shared partners if at least one protein has a partner, 
-                otherwise NaN.
+        float: fraction of shared partners if at least one protein has a partner, otherwise NaN.
 
     """
     partners_1 = (partners[p1] if p1 in partners else set()) - {p2}
     partners_2 = (partners[p2] if p2 in partners else set()) - {p1}
-    directPartners_1 = set(partners_1)
-    for p in directPartners_1:
-        if p in partners:
-            partners_1 = partners_1 | partners[p]
-    directPartners_2 = set(partners_2)
-    for p in directPartners_2:
-        if p in partners:
-            partners_2 = partners_2 | partners[p]
     total = len(partners_1 | partners_2)
     if total > 0:
         return len(partners_1 & partners_2) / total
@@ -58,8 +52,7 @@ def go_sim (p1, p2, goAssoc):
         return np.nan
 
 def coexpr (p1, p2, expr, minTissues = 3, method = 'pearson_corr'):
-    """Calculate the tissue co-expression for two proteins using Pearson's correlation
-        coefficient.
+    """Calculate tissue co-expression for two proteins.
 
     Args:
         p1 (str): protein 1 ID.
@@ -72,8 +65,7 @@ def coexpr (p1, p2, expr, minTissues = 3, method = 'pearson_corr'):
                         1 - hamming_distance / length of valid columns.
     
     Returns:
-        float: tissue co-expression if both proteins have expression values 
-                defined in at least 'minTissues' tissues together, otherwise NaN.
+        float
     
     """
     if (p1 in expr) and (p2 in expr):
@@ -95,38 +87,28 @@ def produce_protein_go_dictionaries (inPath,
                                      MF_outPath,
                                      BP_outPath,
                                      CC_outPath):
-    """Make dictionaries of protein gene ontology (GO) associations, with each GO 
-        aspect in a separate dictionary.
+    """Make dictionaries of protein gene ontology (GO) associations, with each root GO 
+        in a separate dictionary.
 
     Args:
-        inPath (str): file directory of all protein GO associations.
-        GO_outPath (str): file directory to save single dict for all GO aspects.
-        MF_outPath (str): file directory to save single dict for Molecular Function (F).
-        BP_outPath (str): file directory to save single dict for Biological Process (P).
-        CC_outPath (str): file directory to save single dict for Cellular Component (C).
+        inPath (Path): path to file containing all protein GO associations.
+        GO_outPath (Path): file path to save dict of all GO terms.
+        MF_outPath (Path): file path to save dict of molecular function (F) terms.
+        BP_outPath (Path): file path to save dict of biological process (P) terms.
+        CC_outPath (Path): file path to save dict of cellular component (C) terms.
 
     """
-    produce_protein_go_dict(inPath,
-                            GO_outPath)
-    
-    produce_protein_go_dict(inPath,
-                            MF_outPath,
-                            aspect = 'F')
-    
-    produce_protein_go_dict(inPath,
-                            BP_outPath,
-                            aspect = 'P')
-    
-    produce_protein_go_dict(inPath,
-                            CC_outPath,
-                            aspect = 'C')
+    produce_protein_go_dict (inPath, GO_outPath)
+    produce_protein_go_dict (inPath, MF_outPath, aspect = 'F')
+    produce_protein_go_dict (inPath, BP_outPath, aspect = 'P')
+    produce_protein_go_dict (inPath, CC_outPath, aspect = 'C')
 
 def produce_protein_go_dict(inPath, outPath, aspect = None):
     """Make a dictionary of protein gene ontology (GO) associations.
 
     Args:
-        inPath (str): file directory of protein GO associations.
-        outPath (str): file directory to save output dict to.
+        inPath (Path): path to file containing protein GO associations.
+        outPath (Path): file path to save output dict to.
         aspect (str): GO aspects to select: P, F, C, or all if not provided.
 
     """
@@ -168,8 +150,11 @@ def get_all_go_terms(inPath, aspect = None):
     """Return a list of all GO terms.
 
     Args:
-        inPath (str): file directory of protein GO associations.
+        inPath (Path): path to file containing protein GO associations.
         aspect (str): GO aspects to select: P, F, C, or all if not provided.
+
+    Returns:
+        list
 
     """
     goa = pd.read_table(inPath, header=None, sep="\t")
@@ -252,12 +237,12 @@ def produce_illumina_expr_dict (inPath,
                                 uniprotIDmapFile,
                                 outPath,
                                 headers = None):
-    """Make a dictionary of protein tissue expression, log2 transformed.
+    """Make a dictionary of protein tissue expression from Illumina Body Map dataset, log2 transformed.
 
     Args:
-        inPath (str): file directory of gene tissue expression data.
-        uniprotIDmapFile (Path): file directory containing dict of mappings to UniProt IDs.
-        outPath (str): file directory to save output dict to.
+        inPath (Path): path to file containing Illumina Body Map tissue expression data.
+        uniprotIDmapFile (Path): path to file containing dict of mappings to UniProt IDs.
+        outPath (Path): file path to save output dict to.
         headers (list): list of expression column indices starting with gene name column index
                         followed by indices for expression data. If None, column 1 is used as
                         gene name and columns 2 to 17 are used as expression data.
@@ -280,12 +265,13 @@ def produce_gtex_expr_dict (inDir,
                             uniprotIDmapFile,
                             outPath,
                             uniprotIDlistFile = None):
-    """Make a dictionary of protein tissue expression.
+    """Make a dictionary of protein tissue expression from the GTEx dataset.
 
     Args:
-        inDir (str): directory of gene tissue expression data files.
-        uniprotIDmapFile (Path): file directory containing dict of mappings to UniProt IDs.
-        outPath (str): file directory to save output dict to.
+        inDir (Path): file directory containing GTEx tissue expression data files.
+        uniprotIDmapFile (Path): path to file containing dict of mappings to UniProt IDs.
+        outPath (Path): file path to save output dict to.
+        uniprotIDlistFile (Path): path to file containing list of UniProt IDs.
 
     """
     with open(uniprotIDmapFile, 'rb') as f:
@@ -320,12 +306,12 @@ def produce_gtex_expr_dict (inDir,
         pickle.dump(tissueExpr, fOut)
 
 def produce_hpa_expr_dict (inPath, uniprotIDmapFile, outPath):
-    """Make a dictionary of protein tissue expression.
+    """Make a dictionary of protein tissue expression from the HPA dataset.
 
     Args:
-        inPath (str): file directory of gene tissue expression.
-        uniprotIDmapFile (Path): file directory containing dict of mappings to UniProt IDs.
-        outPath (str): file directory to save output dict to.
+        inPath (Path): path to file containing HPA tissue expression.
+        uniprotIDmapFile (Path): path to file containing dict of mappings to UniProt IDs.
+        outPath (Path): file path to save output dict to.
 
     """
     with open(uniprotIDmapFile, 'rb') as f:
@@ -365,12 +351,12 @@ def produce_fantom5_expr_dict (inPath,
                                sampleTypes = None,
                                sampleTypeFile = None,
                                uniprotIDlistFile = None):
-    """Make a dictionary of protein tissue expression.
+    """Make a dictionary of protein tissue expression from the Fantom5 dataset.
 
     Args:
-        inDir (str): directory of gene tissue expression data files.
-        uniprotIDmapFile (Path): file directory containing dict of mappings to UniProt IDs.
-        outPath (str): file directory to save output dict to.
+        inDir (Path): file directory containing Fantom5 tissue expression data files.
+        uniprotIDmapFile (Path): path to file containing dict of mappings to UniProt IDs.
+        outPath (Path): file path to save output dict to.
 
     """
     with open(uniprotIDmapFile, 'rb') as f:

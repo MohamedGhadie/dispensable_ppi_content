@@ -18,10 +18,10 @@ def parse_IntAct_interactions (inPath,
     """Read protein-protein interactions with valid Swiss-Prot IDs from IntAct file.
 
     Args:
-        inPath (str): path to file containing IntAct interactions.
-        spListFile (str): path to file with list of valid Swiss-Prot IDs.
-        outPath (str): path to save processed interactions to.
-        geneMapFile (str): path to file containing dictionary of UniProt ID mapping to gene names.
+        inPath (Path): path to file containing IntAct interactions.
+        spListFile (Path): path to file with list of valid Swiss-Prot IDs.
+        outPath (Path): path to save processed interactions to.
+        geneMapFile (Path): path to file containing dictionary of UniProt ID mapping to gene names.
         selfPPIs (boolean): True to include self-PPIs.
 
     """
@@ -102,9 +102,9 @@ def parse_HI_II_14_interactome (inPath,
     """Read protein-protein interactions that map to UniProt IDs from HI-II-14 interactome file.
 
     Args:
-        inPath (str): path to file containing HI-II-14 interactions.
-        UniProtIDmapFile (str): path to file containing UniProt ID mapping dictionary.
-        outPath (str): path to save processed interactions to.
+        inPath (Path): path to file containing HI-II-14 interactions.
+        UniProtIDmapFile (Path): path to file containing UniProt ID mapping dictionary.
+        outPath (Path): path to save processed interactions to.
         selfPPIs (boolean): True to include self-PPIs.
 
     """
@@ -132,8 +132,8 @@ def parse_refSeq_fasta (inPath, outPath):
     """Convert RefSeq fasta protein sequence file to tab-delimited file.
 
     Args:
-        inPath (str): path to file containing RefSeq sequences in fasta format.
-        outPath (str): path to save sequences in tab-delimited format.
+        inPath (Path): path to file containing RefSeq sequences in fasta format.
+        outPath (Path): path to save sequences in tab-delimited format.
 
     """
     with io.open(outPath, "w") as fout:
@@ -145,10 +145,10 @@ def merge_refSeq_sequence_files (inDir, numFiles, outPath):
     """Merge tab-delimited RefSeq protein sequence files together.
 
     Args:
-        inDir (str): directory containing all RefSeq files to merge.
+        inDir (Path): directory containing all RefSeq files to merge.
                      File # i must be named 'refseq_human_protein_<i>.txt'
         numFiles (numeric): number of files to merge.
-        outPath (str): path to save merged sequence file.
+        outPath (Path): path to save merged sequence file.
 
     """
     if not inDir.exists():
@@ -173,8 +173,8 @@ def parse_fasta_file (inPath, outPath):
     """Read sequences from fasta file.
 
     Args:
-        inPath (str): path to FASTA file containing sequences.
-        outPath (str): path to save tab-delimited sequence file to.
+        inPath (Path): path to FASTA file containing sequences.
+        outPath (Path): path to save tab-delimited sequence file to.
 
     """
     s = list(SeqIO.parse(str(inPath), 'fasta'))
@@ -192,8 +192,8 @@ def parse_blast_file (inPath,
     """Read alignments from BLAST output file.
 
     Args:
-        inPath (str): path to BLAST output file.
-        outPath (str): path to save tab-delimited alignment table to.
+        inPath (Path): path to BLAST output file.
+        outPath (Path): path to save tab-delimited alignment table to.
         encoding (str): encoding for reading BLAST output file.
         pausetime (numeric): time in seconds to pause after processing 50 million lines.
 
@@ -288,11 +288,11 @@ def reduce_fasta_headers (inPath, delimiter, first, last, outPath):
     """Reduce headers in FASTA file to specific subset of elements.
 
     Args:
-        inPath (str): path to FASTA file.
+        inPath (Path): path to FASTA file.
         delimiter (str): delimiter used to split FASTA headers.
         first (numeric): position of the first header element to include.
         last (numeric): position of the last header element to include.
-        outPath (str): path to save FASTA file with reduced headers to.
+        outPath (Path): path to save FASTA file with reduced headers to.
         
     """
     s = list(SeqIO.parse(str(inPath), 'fasta'))
@@ -310,7 +310,7 @@ def write_fasta_file (data, idCol, seqCol, outPath):
         data (DataFrame): table to be written to FASTA file.
         idCol (str): name of column containing IDs to be written as FASTA headers.
         seqCol (str): name of column containing sequences to be written to FASTA file.
-        outPath (str): path to save FASTA file to.
+        outPath (Path): path to save FASTA file to.
         
     """
     with io.open(outPath, "w") as fout:
@@ -322,9 +322,9 @@ def produce_item_list (inPath, cols, outPath):
     """Write unique items from specific table columns to file.
 
     Args:
-        inPath (str): path to file containing table to be written.
+        inPath (Path): path to file containing table to be written.
         cols (list, str): names of columns to be saved to file.
-        outPath (str): path to save list of items to.
+        outPath (Path): path to save list of items to.
 
     """
     df = pd.read_table(inPath, sep='\t')
@@ -338,7 +338,7 @@ def read_list_table (inPath, cols, dtyp, delm = '\t'):
         to lists.
 
     Args:
-        inPath (str): path to file containing table to be read.
+        inPath (Path): path to file containing table to be read.
         cols (list, str): names of columns whose entries are to be converted to lists.
         dtyp (list, datatype): data types to convert each column list elements to.
         delm (str): delimiter used to read table.
@@ -359,7 +359,7 @@ def write_list_table (df, cols, outPath, delm = '\t'):
     Args:
         df (DataFrame): table to be writen to file.
         cols (list, str): names of columns whose list entries are to be converted to strings.
-        outPath (str): path to save table to.
+        outPath (Path): path to save table to.
         delm (str): delimiter used to write table to file.
 
     """
@@ -384,16 +384,16 @@ def write_hpc_job (outPath,
         See http://www.hpc.mcgill.ca
 
     Args:
-        outPath (str): path to save job file to.
+        outPath (Path): path to save job file to.
         nodes (numeric): number of server nodes to be allocated.
         ppn (numeric): total number of CPU cores to be allocated.
         pmem (numeric): default random access memory (RAM) in MB to be reserved per core.
         walltime (str: 'days:hr:min:sec'): maximum time allowed for job to run.
-        outputfile (str): name of file where standard output is written.
-        errorfile (str): name of file where runtime error is written.
+        outputfile (Path): path to file where standard output is written.
+        errorfile (Path): path to file where runtime error is written.
         rapid (str): resource allocation project identifier (RAPid).
         jobid ('str'): job name.
-        commands (list): extra commands in string format to be written to job file.
+        commands (list): additional commands in string format to be written to job file.
 
     """
     with io.open(outPath, "w") as fout:

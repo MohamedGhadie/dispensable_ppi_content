@@ -1,12 +1,24 @@
+#----------------------------------------------------------------------------------------
+# Modules for calculating and processing mutation ∆∆G data.
+#----------------------------------------------------------------------------------------
+
 import os
 import io
-import re
 from pathlib import Path
 from text_tools import write_hpc_job
 from pdb_tools import write_partial_structure
 
-def read_unprocessed_ddg_mutations (inPath, type):
-    
+def read_unprocessed_ddg_mutations (inPath, type = 'binding'):
+    """Read PDB chain mutations with missing ∆∆G values from file.
+
+    Args:
+        inPath (Path): path to file containing mutations.
+        type (str): type of ∆∆G values, 'binding' for interface ∆∆G, 'folding' for protein folding ∆∆G.
+
+    Returns:
+        dict
+
+    """
     mutations = {}
     done = set()
     with io.open(inPath, "r", encoding="utf-8") as f:
@@ -46,7 +58,24 @@ def produce_bindprofx_jobs (mutations,
                             username = '',
                             hpcCommands = None,
                             serverDataDir = '../data'):
-    
+    """Produce jobs to be submitted to BindProfX server for ∆∆G calculations.
+
+    Args:
+        mutations (dict): mutations associated with each structural model.
+        pdbDir (Path): file directory containing PDB structures.
+        outDir (Path): file directory to save BindProfX jobs to.
+        write_hpc_jobfiles (bool): also produce job files for running BindProfX 
+                                    calculations on McGill HPC server.
+        nodes (numeric): number of HPC server nodes to be allocated.
+        ppn (numeric): total number of HPC CPU cores to be allocated.
+        pmem (numeric): default random access memory (RAM) in MB to be reserved per core.
+        walltime (str: 'days:hr:min:sec'): maximum time allowed for job to run on server.
+        rapid (str): resource allocation project identifier (RAPid) for HPC user.
+        username (str): user name to associate with HPC server job.
+        hpcCommands (list): additional commands in string format to be written to HPC job file.
+        serverDataDir (Path): data directory used by HPC server relative to job directory.
+
+    """
     dataDir = outDir / 'data'
     jobDir = outDir / 'jobs'
     if not dataDir.exists():
@@ -86,7 +115,15 @@ def produce_bindprofx_jobs (mutations,
                            commands = commands)
 
 def read_bindprofx_results (inDir):
-    
+    """Read mutation ∆∆G results produced by BindProfX.
+
+    Args:
+        inDir (Path): file directory containing BindProfX results.
+
+    Returns:
+        dict, dict: processed and unprocessed mutations.
+
+    """
     processed = {}
     unprocessed = {}
     strucDir = os.listdir(inDir)
@@ -139,7 +176,24 @@ def produce_foldx_jobs (mutations,
                         username = '',
                         hpcCommands = None,
                         serverDataDir = '../data'):
-    
+    """Produce jobs to be submitted to FoldX server for ∆∆G calculations.
+
+    Args:
+        mutations (dict): mutations associated with each structural model.
+        pdbDir (Path): file directory containing PDB structures.
+        outDir (Path): file directory to save FoldX jobs to.
+        write_hpc_jobfiles (bool): also produce job files for running FoldX calculations 
+                                    on McGill HPC server.
+        nodes (numeric): number of HPC server nodes to be allocated.
+        ppn (numeric): total number of HPC CPU cores to be allocated.
+        pmem (numeric): default random access memory (RAM) in MB to be reserved per core.
+        walltime (str: 'days:hr:min:sec'): maximum time allowed for job to run on server.
+        rapid (str): resource allocation project identifier (RAPid) for HPC user.
+        username (str): user name to associate with HPC server job.
+        hpcCommands (list): additional commands in string format to be written to HPC job file.
+        serverDataDir (Path): data directory used by HPC server relative to job directory.
+
+    """
     dataDir = outDir / 'data'
     jobDir = outDir / 'jobs'
     if not dataDir.exists():
@@ -201,7 +255,23 @@ def write_foldx_config (outPath,
                         ionStrength = 0.05,
                         water = '-IGNORE',
                         vdwDesign = 2):
-    
+    """Produce FoldX configuration file.
+
+    Args:
+        outPath (Path): file path to save FoldX configurations.
+        command (str): main command to be run by FoldX.
+        other_cmd (list): additional commands in string format to be run by FoldX.
+        pdb_dir (Path): file directory containing PDB structures.
+        output_dir (Path): file directory where FoldX results are saved.
+        pdb_file (Path): path to file containing PDB structure to be processed.
+        mutant_file (Path): path to file containing list of mutations if applicable.
+        temp (numeric): temperature in Kelvins.
+        ph (numeric): PH value.
+        ionStrength (numeric): ionic strength of the solution in Moles.
+        water (str): how to handle water molecules, '-CRYSTAL', '-PREDICT', '-IGNORE' or '-COMPARE'.
+        vdwDesign (numeric): VDW design of the experiment, 0 very soft, 1 medium soft, 2 strong.
+
+    """
     with io.open(outPath, "w") as fout:
         fout.write('command=%s' % command)
         if other_cmd:
@@ -221,7 +291,15 @@ def write_foldx_config (outPath,
         fout.write('\n' + 'vdwDesign=%d' % vdwDesign)
 
 def read_foldx_results (inDir):
-    
+    """Read mutation ∆∆G results produced by FoldX.
+
+    Args:
+        inDir (Path): file directory containing FoldX results.
+
+    Returns:
+        dict, dict: processed and unprocessed mutations.
+
+    """
     processed, unprocessed = {}, {}
     strucDirs = os.listdir(inDir)
     strucDirs = [dir for dir in strucDirs if os.path.isdir(inDir / dir)]
@@ -263,12 +341,15 @@ def read_foldx_results (inDir):
     
     return processed, unprocessed
 
-def read_protein_mutation_ddg (inPath, type):
-    
-    """Read change in free energy of structures upon mutation.
+def read_protein_mutation_ddg (inPath, type = 'binding'):
+    """Read protein mutation ∆∆G values from file.
 
     Args:
-        inPath (str): file directory containing free energy change. 
+        inPath (Path): path to file containing mutations with ∆∆G values.
+        type (str): type of ∆∆G values, 'binding' for interface ∆∆G, 'folding' for protein folding ∆∆G.
+
+    Returns:
+        dict
 
     """
     ddgDict = {}
@@ -289,12 +370,15 @@ def read_protein_mutation_ddg (inPath, type):
                         ddgDict[k] = val
     return ddgDict
 
-def read_chain_mutation_ddg (inPath, type):
-    
-    """Read change in free energy of structures upon mutation.
+def read_chain_mutation_ddg (inPath, type = 'binding'):
+    """Read PDB chain mutation ∆∆G values from file.
 
     Args:
-        inPath (str): file directory containing free energy change. 
+        inPath (Path): path to file containing mutations with ∆∆G values.
+        type (str): type of ∆∆G values, 'binding' for interface ∆∆G, 'folding' for protein folding ∆∆G.
+
+    Returns:
+        dict
 
     """
     ddgDict = {}
@@ -312,19 +396,27 @@ def read_chain_mutation_ddg (inPath, type):
     return ddgDict
 
 def copy_mutation_ddg (inPath1, inPath2, outPath, type):
-    
-    """Copy mutation change in free energy from one file to another.
+    """Transfer mutation ∆∆G values from one file to another file based on similar mutation 
+        structure mappings.
 
     Args:
-        inPath1 (str): file directory containing change in binding free energy.
-        inPath2 (str): file directory containing mutations with unknown change in binding free energy.
-        outPath (str): file directory to output mutations with change in binding free energy.
+        inPath1 (Path): path to file containing mutation ∆∆G values.
+        inPath2 (Path): path to file containing mutations with missing ∆∆G values.
+        outPath (Path): file path to save a copy of file in inPath2 with updated ∆∆G values.
 
     """
     ddg = read_chain_mutation_ddg (inPath1, type)
     write_mutation_ddg_tofile (ddg, inPath2, outPath, type)
 
-def write_mutation_ddg_tofile (ddg, inPath, outPath, type):
+def write_mutation_ddg_tofile (ddg, inPath, outPath, type = 'binding'):
+    """Update file with mutation ∆∆G values.
+
+    Args:
+        ddg (dict): mutation ∆∆G values.
+        inPath (Path): path to file whose mutations will be updated with ∆∆G values.
+        outPath (Path): file path to save a copy of file in inPath with updated ∆∆G values.
+        type (str): type of ∆∆G values, 'binding' for interface ∆∆G, 'folding' for protein folding ∆∆G.
+    """
     
     with io.open(inPath, "r", encoding="utf-8") as f, io.open(outPath, "w") as fout:
         fout.write(f.readline().strip() + '\n')

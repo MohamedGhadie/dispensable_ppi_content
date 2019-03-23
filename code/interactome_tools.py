@@ -63,9 +63,9 @@ def write_interactome_sequences (inPath, sequenceFile, outPath):
     """Write interactome protein sequences to fasta file.
 
     Args:
-        inPath (str): path to file containing interactome.
-        sequenceFile (str): path to file containing protein sequences.
-        outPath(str): path to write protein sequences to.
+        inPath (Path): path to file containing interactome.
+        sequenceFile (Path): path to file containing protein sequences.
+        outPath(Path): path to write protein sequences to.
 
     """
     interactome = pd.read_table(inPath, sep='\t')
@@ -86,7 +86,7 @@ def write_chain_annotated_interactome_to_excel (interactome,
 
     Args:
         interactome (DataFrame): interactome to be written to file.
-        outPath (str): output file path to write interactome to.
+        outPath (Path): output file path to write interactome to.
         sheet_name (str): name of spreadsheet where interactome will be written.
 
     """
@@ -103,7 +103,7 @@ def write_chain_annotated_interactome (interactome,
 
     Args:
         interactome (DataFrame): interactome to be written to file.
-        outPath (str): output file path to write interactome to.
+        outPath (Path): output file path to write interactome to.
         toExcel (bool): write to excel spreadsheet, otherwise to tab-delimited text file.
         sheet_name (str): name of spreadsheet where interactome will be written. Only
                             relevent if toExcel is True.
@@ -124,7 +124,7 @@ def read_chain_annotated_interactome (inPath):
     """Read interactome annotated with chain pairs from a file.
 
     Args:
-        inPath (str): path to file containing chain-annotated interactome.
+        inPath (Path): path to file containing chain-annotated interactome.
     
     Returns:
         DataFrame
@@ -139,7 +139,7 @@ def write_unmerged_interface_annotated_interactome (interactome, outPath):
 
     Args:
         interactome (DataFrame): interactome to be written to file.
-        outPath (str): output file path to write interactome to.
+        outPath (Path): output file path to write interactome to.
 
     """
     interactomeCp = interactome.copy()
@@ -156,7 +156,7 @@ def read_unmerged_interface_annotated_interactome (inPath):
     """Read interactome annotated with multiple interfaces per interaction from file.
 
     Args:
-        inPath (str): file directory containing interface-annotated interactome.
+        inPath (Path): file directory containing interface-annotated interactome.
     
     Returns:
         DataFrame
@@ -176,7 +176,7 @@ def write_single_interface_annotated_interactome_to_excel (interactome,
 
     Args:
         interactome (DataFrame): interactome to be written to file.
-        outPath (str): output file path to write interactome to.
+        outPath (Path): output file path to write interactome to.
         sheet_name (str): name of spreadsheet where interactome will be written.
 
     """
@@ -190,7 +190,7 @@ def write_single_interface_annotated_interactome (interactome, outPath):
 
     Args:
         interactome (DataFrame): interactome to be written to file.
-        outPath (str): output file path to write interactome to.
+        outPath (Path): output file path to write interactome to.
 
     """
     write_interface_annotated_interactome (interactome,
@@ -201,7 +201,7 @@ def read_single_interface_annotated_interactome (inPath):
     """Read interactome annotated with a single interface per interaction from file.
 
     Args:
-        inPath (str): path to file containing interface-annotated interactome.
+        inPath (Path): path to file containing interface-annotated interactome.
     
     Returns:
         DataFrame
@@ -219,7 +219,7 @@ def write_interface_annotated_interactome_to_excel (interactome,
 
     Args:
         interactome (DataFrame): interactome to be written to file.
-        outPath (str): output file path to write interactome to.
+        outPath (Path): output file path to write interactome to.
         delm (list): delimiters used to separate interfaces before writing.
         sheet_name (str): name of spreadsheet where interactome will be written.
 
@@ -240,7 +240,7 @@ def write_interface_annotated_interactome (interactome,
 
     Args:
         interactome (DataFrame): interactome to be written to file.
-        outPath (str): output file path to write interactome to.
+        outPath (Path): output file path to write interactome to.
         delm (list): delimiters used to separate interface annotations before writing.
         chain_delm (list): delimiters used to separate chain-pair annotations before writing.
         toExcel (bool): write to excel spreadsheet, otherwise to tab-delimited text file.
@@ -270,7 +270,7 @@ def read_interface_annotated_interactome (inPath, delm = None):
     """Read interactome annotated with interfaces from a file using a list of specified delimiters.
 
     Args:
-        inPath (str): file directory containing interface-annotated interactome.
+        inPath (Path): file directory containing interface-annotated interactome.
         delm (list): delimiters used to split interface annotations after reading.
     
     Returns:
@@ -289,7 +289,7 @@ def create_ppi_graph (inPath):
     """Create a networkx graph from an interactome.
 
     Args:
-        inPath (str): path to dictionary of protein interaction partners.
+        inPath (Path): path to dictionary of protein interaction partners.
 
     Returns:
         Networkx Graph
@@ -311,7 +311,7 @@ def find_all_shortest_paths (g, outPath):
 
     Args:
         g (Graph): Networkx graph.
-        outPath (str): path to save dictionary of shortest paths.
+        outPath (Path): path to save dictionary of shortest paths.
 
     """
     paths = dict(nx.all_pairs_shortest_path(g))

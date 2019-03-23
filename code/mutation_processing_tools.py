@@ -18,8 +18,8 @@ def parse_dbsnp_flatfile_keys (inPath,
     """Scan dbSNP mutation flatfile for mutation property keys.
 
     Args:
-        inPath (str): path to flatfile containing dbSNP mutations.
-        outDir (str): file directory to save key files to.
+        inPath (Path): path to flatfile containing dbSNP mutations.
+        outDir (Path): file directory to save key files to.
         encoding (str): encoding used to read flatfile.
         pausetime (numeric): pausing time in seconds between processing of every 50 million lines.
 
@@ -85,9 +85,9 @@ def parse_dbsnp_flatfile (inPath,
     """Produce tab-delimited file from dbSNP mutation flatfile.
 
     Args:
-        inPath (str): path to flatfile containing dbSNP mutations.
-        keyDir (str): file directory containing dbSNP flatfile keys.
-        outPath (str): path to save processed mutation file to.
+        inPath (Path): path to flatfile containing dbSNP mutations.
+        keyDir (Path): file directory containing dbSNP flatfile keys.
+        outPath (Path): path to save processed mutation file to.
         encoding (str): encoding used to read flatfile.
         pausetime (numeric): pausing time in seconds between processing of every 50 million lines.
 
@@ -207,9 +207,9 @@ def filter_and_merge_dbsnp_mutations (inDir,
     """Filter and merge dbSNP mutations from several tab-delimited files.
 
     Args:
-        inDir (str): file directory containing dbSNP files to merge.
-        UniProtIDmapFile (str): path to file containing UniProt ID mapping dictionary.
-        outPath (str): path to save processed mutation file to.
+        inDir (Path): file directory containing dbSNP files to merge.
+        UniProtIDmapFile (Path): path to file containing UniProt ID mapping dictionary.
+        outPath (Path): path to save processed mutation file to.
         pausetime (numeric): pausing time in seconds between processing each file.
 
     """
@@ -296,15 +296,15 @@ def filter_clinvar_mutations (inPath,
     """Filter ClinVar mutations.
 
     Args:
-        inPath (str): path to file containing ClinVar mutations.
-        outPath (str): path to save processed mutation file to.
+        inPath (Path): path to file containing ClinVar mutations.
+        outPath (Path): path to save processed mutation file to.
         assembly (list, str): genome assembly for selected mutations.
         origin (list, str): germline or somatic.
         type (list, str): type of mutations to select.
         incClinSig (list, str): valid clinical significance terms for selected mutations.
         excClinSig (list, str): mutations with any of these clinical significance terms are excluded.
         status (list, str): review status for selected mutations.
-        UniProtIDmapFile (str): path to file containing UniProt ID mapping dictionary.
+        UniProtIDmapFile (Path): path to file containing UniProt ID mapping dictionary.
 
     """
     mutations = pd.read_table(inPath, sep='\t')
@@ -391,8 +391,8 @@ def decompose_clinvar_snp_mutations (inPath, outPath):
     """Produce ClinVar mutation file mutation names decomposed into several attributes.
 
     Args:
-        inPath (str): path to file containing ClinVar mutations in tab-delimited format.
-        outPath (str): path to save processed mutation file to.
+        inPath (Path): path to file containing ClinVar mutations in tab-delimited format.
+        outPath (Path): path to save processed mutation file to.
 
     """
     mutations = pd.read_table(inPath, sep='\t')
@@ -463,9 +463,9 @@ def map_clinvar_protein_refseq_IDs (inPath, idMapFile, outPath):
     """Produce ClinVar mutation file with RefSeq RNA accessions mapped to RefSeq protein accessions.
 
     Args:
-        inPath (str): path to file containing ClinVar mutations in tab-delimited format.
-        idMapFile (str): path to file containing RefSeq ID mapping dictionary.
-        outPath (str): path to save processed mutation file to.
+        inPath (Path): path to file containing ClinVar mutations in tab-delimited format.
+        idMapFile (Path): path to file containing RefSeq ID mapping dictionary.
+        outPath (Path): path to save processed mutation file to.
 
     """
     mutations = pd.read_table(inPath, sep='\t')
@@ -481,10 +481,10 @@ def get_flanking_sequences (inPath, sequenceFile, sideLength, outPath):
     """Produce mutation flanking sequences.
 
     Args:
-        inPath (str): path to file containing mutations in tab-delimited format.
-        sequenceFile (str): path to file containing protein sequences.
+        inPath (Path): path to file containing mutations in tab-delimited format.
+        sequenceFile (Path): path to file containing protein sequences.
         sideLength (numeric): number of residues included on each side of the flanking sequence.
-        outPath (str): path to save processed mutation file to.
+        outPath (Path): path to save processed mutation file to.
 
     """
     mutations = pd.read_table(inPath, sep='\t')
@@ -509,9 +509,9 @@ def match_flanking_sequences (inPath, sequenceFile, outPath, mask = False):
     """Select mutations whose flanking sequence matches to protein sequence.
 
     Args:
-        inPath (str): path to file containing mutations in tab-delimited format.
-        sequenceFile (str): path to file containing protein sequences in tab-delimited format.
-        outPath (str): path to save selected mutations to.
+        inPath (Path): path to file containing mutations in tab-delimited format.
+        sequenceFile (Path): path to file containing protein sequences in tab-delimited format.
+        outPath (Path): path to save selected mutations to.
         mask (bool): if True, mutation position is masked when matching flanking sequence 
                      to protein sequence.
 
@@ -574,8 +574,8 @@ def remove_synon_nonsense_mutations(inPath, outPath):
     """Remove synonymous and nonsense mutations.
 
     Args:
-        inPath (str): path to file containing mutations in tab-delimited format.
-        outPath (str): path to save selected mutations to.
+        inPath (Path): path to file containing mutations in tab-delimited format.
+        outPath (Path): path to save selected mutations to.
 
     """
     mutations = pd.read_table(inPath, sep='\t')
@@ -610,8 +610,8 @@ def remove_mutation_overlaps (nondiseaseMutationFile, diseaseMutationFile):
         Also removes synonymous mutations and duplicates by position and mutation residue.
 
     Args:
-        nondiseaseMutationFile (str): path to tab-delimited file containing nondisease mutations.
-        diseaseMutationFile (str): path to tab-delimited file containing disease mutations.
+        nondiseaseMutationFile (Path): path to tab-delimited file containing nondisease mutations.
+        diseaseMutationFile (Path): path to tab-delimited file containing disease mutations.
 
     Returns:
         Two DataFrames: nondisease mutations, disease mutations

@@ -16,7 +16,7 @@ def main():
     
     # reference interactome name
     # options: HI-II-14, IntAct
-    ref_interactome_name = 'IntAct'
+    ref_interactome_name = 'HI-II-14'
     
     # tissue expression databases
     expr_db = ['Illumina', 'GTEx', 'HPA', 'Fantom5']
@@ -70,9 +70,12 @@ def main():
                    ylabels = [round(x, 1) for x in np.arange(0, 0.9, 0.2)],
                    colors = interactome_colors,
                    edgecolor = 'k',
+                   ewidth = 1.5,
                    barwidth = 0.2,
                    bargap = 0.03,
                    fontsize = 18,
+                   capsize = 5,
+                   msize = 8,
                    leg = ['Random pairs',
                           '%s reference interactome' % ref_interactome_name,
                           struc_name[ref_interactome_name]],

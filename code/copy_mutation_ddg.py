@@ -17,9 +17,9 @@ def main():
     # parent directory of all processed data files
     procDir = dataDir / 'processed'
     
-    fromPath = procDir / 'IntAct' / 'disease_mutations_foldx_ddg.txt'
-    toPath = procDir / 'IntAct' / 'disease_mutations_onchains.txt'
-    outPath = procDir / 'IntAct' / 'disease_mutations_foldx_ddg_2.txt'
+    fromPath = procDir / 'HI-II-14' / 'disease_mutations_bindprofx_ddg.txt'
+    toPath = procDir / 'IntAct' / 'disease_mutations_bindprofx_ddg.txt'
+    outPath = procDir / 'IntAct' / 'disease_mutations_bindprofx_ddg_2.txt'
     copy_mutation_ddg (fromPath, toPath, outPath, 'binding')
 
 if __name__ == "__main__":

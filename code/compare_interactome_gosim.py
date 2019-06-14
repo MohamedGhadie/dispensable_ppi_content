@@ -28,7 +28,7 @@ def main():
     
     # reference interactome name
     # options: HI-II-14, IntAct
-    interactome_name = 'IntAct'
+    interactome_name = 'HI-II-14'
     
     # similarity measure to calculate GO similarity
     # options: Resnik, Lin, Jiang-Conrath, SimGIC, SimUI, SimIC, SimRel, Dice, SimTO
@@ -41,7 +41,7 @@ def main():
     
     # root ontology on which GO similarity is calculated
     # options: biological_process, molecular_function, cellular_component
-    ont_root = 'cellular_component'
+    ont_root = 'biological_process'
     
     # root ontology labels used to label output files and figures
     ont_abv = {'biological_process':'bp', 'molecular_function':'mf', 'cellular_component':'cc'}
@@ -65,7 +65,7 @@ def main():
     dataDir = Path('../data')
     
     # directory of data files from external sources
-    extDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data/external')
+    extDir = dataDir / 'external'
     
     # parent directory of all processed data files
     procDir = dataDir / 'processed'

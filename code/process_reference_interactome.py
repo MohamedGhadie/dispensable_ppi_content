@@ -19,13 +19,13 @@ def main():
     
     # reference interactome name
     # options: HI-II-14, IntAct
-    interactome_name = 'IntAct'
+    interactome_name = 'HI-II-14'
     
     # parent directory of all data files
     dataDir = Path('../data')
     
     # directory of data files from external sources
-    extDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data/external')
+    extDir = dataDir / 'external'
     
     # parent directory of all processed data files
     procDir = dataDir / 'processed'

@@ -19,7 +19,7 @@ def main():
     
     # reference interactome name
     # options: HI-II-14, IntAct
-    interactome_name = 'IntAct'
+    interactome_name = 'HI-II-14'
     
     # show figures
     showFigs = False

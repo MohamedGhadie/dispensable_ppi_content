@@ -373,7 +373,7 @@ def is_contact (res, other_residues, maxDist):
     Args:
         res (Bio.PDB.Residue): residue to be checked.
         other_residues (list): other residues to check against.
-        maxDist (numeric): maximum distance in Angstroms allowed for contact.
+        maxDist (numeric): cutoff distance in Angstroms for contact residues.
     
     Returns:
         boolean
@@ -408,7 +408,7 @@ def get_interface_by_chainIDs (pdbDir,
         pdbDir (Path): directory containing PDB structure files.
         chain_id1 (str): ID of first chain.
         chain_id2 (str): ID of second chain.
-        maxDist (numeric): maximum distance in Angstroms allowed between binding residues.
+        maxDist (numeric): cutoff distance in Angstroms for binding residues.
     
     Returns:
         list, list: positions of interface residues on chain sequences.
@@ -445,7 +445,7 @@ def get_interface_indices (residues1, residues2, maxDist = 5):
     Args:
         residues1 (list): first list of residues.
         residues2 (list): second list of residues.
-        maxDist (numeric): maximum distance in Angstroms allowed between binding residues. 
+        maxDist (numeric): cutoff distance in Angstroms for binding residues. 
     
     Returns:
         list, list: indices of interface residues in each group.

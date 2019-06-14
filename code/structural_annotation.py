@@ -28,7 +28,9 @@ from pdb_tools import (allow_pdb_downloads,
                        return_chain_sequence,
                        ordered_chain_residues,
                        return_chain_res_posToID,
+                       return_chain_res_IDToPos,
                        get_interface_by_chainIDs)
+from ddg_tools import read_protein_mutation_ddg
 
 known_interfaces = {}
 
@@ -248,8 +250,10 @@ def filter_chain_annotations (inPath, evalue, chainCoverage, outPath):
     """
     chainMap = pd.read_table(inPath, sep='\t')
     chainMap = chainMap[chainMap["Expect"] < evalue]
-    chainMap = chainMap[(chainMap["Send"] - chainMap["Sstart"])
-                        >= chainMap["Slen"] * chainCoverage].reset_index(drop=True)
+    chainMap["chain_cov"] = chainMap["Spos"].apply(len) / chainMap["Slen"]
+    chainMap = chainMap[chainMap["chain_cov"] >= chainCoverage].reset_index(drop=True)
+#     chainMap = chainMap[(chainMap["Send"] - chainMap["Sstart"])
+#                         >= chainMap["Slen"] * chainCoverage].reset_index(drop=True)
     chainMap = chainMap.sort_values("Expect", axis=0, ascending=True)
     chainMap = chainMap.drop_duplicates(subset=['Query','Subject'], keep='first')
     chainMap = chainMap.sort_values(['Query','Subject'], axis=0, ascending=True)
@@ -482,8 +486,7 @@ def map_twoside_interfaces (pdbDir,
         known_interfaces[chainKey1], known_interfaces[chainKey2] = get_interface_by_chainIDs (pdbDir,
                                                                                               chain1,
                                                                                               chain2,
-                                                                                              maxDist = bindingDist,
-                                                                                              suppressWarnings = True)
+                                                                                              maxDist = bindingDist)
         print('\t\t\t' + 'writing chain interfaces to file')
         write_chain_interfaces(interfaceFile)
     else:
@@ -614,6 +617,166 @@ def read_chain_interfaces (inPath):
             else:
                 known_interfaces[chainKey] = row.Chain1_interface
 
+def process_skempi_mutations (mutationFile,
+                              chainSeqFile,
+                              chainStrucResFile,
+                              pdbDir,
+                              outPath,
+                              downloadPDB = True,
+                              suppressWarnings = False):
+    
+    allow_pdb_downloads (downloadPDB)
+    suppress_pdb_warnings (suppressWarnings)
+    load_dictionaries (chainSequenceFile = chainSeqFile, chainStrucResLabelFile = chainStrucResFile)
+    mutations = pd.read_table (mutationFile, sep=';')
+    
+    mutList = []
+    for _, row in mutations.iterrows():
+        pdbid, chain_1, chain_2 = row["#Pdb"].split('_')
+        pdbid = pdbid.lower()
+        if (len(chain_1) == 1) and (len(chain_2) == 1):
+            chainID1 = pdbid + '_' + chain_1
+            chainID2 = pdbid + '_' + chain_2
+            mut = list(map(str.strip, row["Mutation(s)_PDB"].split(',')))
+            if len(mut) == 1:
+                mut = mut[0]
+                wt_res, hostChainID = mut[:2]
+                pos = mut[2:-1]
+                mut_res = mut[-1]
+                if pos[-1].isalpha():
+                    resID = (' ', int(pos[:-1]), pos[-1])
+                else:
+                    resID = (' ', int(pos), ' ')
+                mut_pos = return_chain_res_IDToPos (pdbid, hostChainID, resID, pdbDir)
+                if mut_pos:
+                    perturbed = 1 if row["iMutation_Location(s)"] in ['COR', 'SUP', 'RIM'] else 0
+                    if hostChainID == chain_1:
+                        (protein, partner, protein_name, partner_name) = (chainID1,
+                                                                          chainID2,
+                                                                          row["Protein 1"],
+                                                                          row["Protein 2"])
+                    else:
+                        (protein, partner, protein_name, partner_name) = (chainID2,
+                                                                          chainID1,
+                                                                          row["Protein 2"],
+                                                                          row["Protein 1"])
+                    try:
+                        temp = float(row["Temperature"])
+                    except ValueError:
+                        temp = 298.0
+                    
+                    try:
+                        kd_mut = float(row["Affinity_mut (M)"])
+                        kd_wt = float(row["Affinity_wt (M)"])
+                        dg_mut =  (8.314 / 4184) * temp * np.log(kd_mut)
+                        dg_wt =  (8.314 / 4184) * temp * np.log(kd_wt)
+                        ddg = dg_mut - dg_wt
+                        mutList.append((protein,
+                                        partner,
+                                        protein_name,
+                                        partner_name,
+                                        mut_pos,
+                                        mut_res,
+                                        mut,
+                                        perturbed,
+                                        temp,
+                                        kd_mut,
+                                        kd_wt,
+                                        dg_mut,
+                                        dg_wt,
+                                        ddg))
+                    except ValueError:
+                        pass
+    
+    (proteins, partners, protein_names, partner_names, positions, mut_residues, mut,
+     perturbations, temperatures, kd_mut, kd_wt, dg_mut, dg_wt, ddg) = zip(* mutList)
+    
+    expanded_mutations = pd.DataFrame(data = {"Protein":proteins,
+                                              "partners":partners,
+                                              "protein_name":protein_names,
+                                              "partner_name":partner_names,
+                                              "Mutation_Position":positions,
+                                              "Mut_res":mut_residues,
+                                              "chain_mutation":mut,
+                                              "perturbations":perturbations,
+                                              "temperature":temperatures,
+                                              "kd_mut":kd_mut,
+                                              "kd_wt":kd_wt,
+                                              "dg_mut":dg_mut,
+                                              "dg_wt":dg_wt,
+                                              "ddg":ddg})
+    expanded_mutations = expanded_mutations.drop_duplicates (subset=['protein_name',
+                                                                     'partner_name',
+                                                                     'Mutation_Position',
+                                                                     'Mut_res'], keep='first')
+    expanded_mutations = expanded_mutations.drop_duplicates (subset=['Protein',
+                                                                     'partners',
+                                                                     'Mutation_Position',
+                                                                     'Mut_res'], keep='first')
+    
+    print('%d out of %d mutations selected' % (len(expanded_mutations), len(mutations)))
+    expanded_mutations.to_csv(outPath, index=False, sep = '\t')
+
+def write_skempi_mutation_crystal_maps (inPath, outPath, modelddgFile = None):
+    
+    mutations = pd.read_table (inPath, sep='\t')
+    
+    if modelddgFile:
+        modelddg = read_protein_mutation_ddg (modelddgFile, type = 'binding')
+        filter = True
+    else:
+        modelddg = {}
+        filter = False
+    with io.open(outPath, "w") as fout:
+        fout.write('\t'.join(['protein',
+                              'partner',
+                              'protein_pos',
+                              'pdb_id',
+                              'chain_id',
+                              'chain_pos',
+                              'chain_mutation',
+                              'partner_chain']) + '\n')
+        for _, row in mutations.iterrows():
+            k = row.Protein, row.partners, row.Mutation_Position, row.Mut_res
+            if (k in modelddg) or (not filter):
+                pdb_id, chain_id = row.Protein.split('_')
+                _, partner_chain = row.partners.split('_')
+                fout.write('\t'.join([row.Protein,
+                                      row.partners,
+                                      str(row.Mutation_Position),
+                                      pdb_id,
+                                      chain_id,
+                                      str(row.Mutation_Position),
+                                      row.chain_mutation,
+                                      partner_chain]) + '\n')
+
+def write_skempi_mutation_structure_maps (mutationFile,
+                                          interactomeFile,
+                                          chainMapFile,
+                                          chainSeqFile,
+                                          chainStrucResFile,
+                                          pdbDir,
+                                          outPath,
+                                          chainInterfaceFile = None,
+                                          downloadPDB = True,
+                                          suppressWarnings = False):
+    
+    mutations = pd.read_table (mutationFile, sep='\t')
+    mutations["partners"] = mutations["partners"].apply(lambda x: [x])
+    mutations["perturbations"] = mutations["perturbations"].apply(lambda x: [int(x)])
+    
+    write_mutation_structure_maps (mutations,
+                                   interactomeFile,
+                                   chainMapFile,
+                                   chainSeqFile,
+                                   chainSeqFile,
+                                   chainStrucResFile,
+                                   pdbDir,
+                                   outPath,
+                                   chainInterfaceFile = chainInterfaceFile,
+                                   downloadPDB = downloadPDB,
+                                   suppressWarnings = suppressWarnings)
+    
 def write_mutation_structure_maps (mutations,
                                    interactomeFile,
                                    chainMapFile,
@@ -661,7 +824,7 @@ def write_mutation_structure_maps (mutations,
             warnings.warn('Chain interface file not found. Mutations will be mapped onto structure without checking interface')
     
     print('\t' + 'writing mutations')
-    with io.open(outPath, "a") as fout:
+    with io.open(outPath, "w") as fout:
         # write header line to file
         fout.write('\t'.join(['protein',
                               'partner',
@@ -799,3 +962,13 @@ def position_map (resPos, strucMap):
         else:
             posMap.append(np.nan)
     return np.array(posMap)
+
+def is_cocrystal (protein, chain, chainMap):
+    
+    mapping = chainMap[(chainMap["Query"] == protein) & (chainMap["Subject"] == chain)].iloc[0]
+    if (mapping.Identities == mapping.Qlen) and (mapping.Identities == mapping.Slen):
+        return True
+    else:
+        return False
+
+        

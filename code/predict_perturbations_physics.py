@@ -46,14 +46,14 @@ def main():
     
     # reference interactome name
     # options: HI-II-14, IntAct
-    interactome_name = 'IntAct'
+    interactome_name = 'HI-II-14'
     
     # structural interactome names
     struc_name = {'HI-II-14':'Y2H-SI', 'IntAct':'IntAct-SI'}
     
     # method of calculating mutation ∆∆G for which results will be used
     # options: bindprofx, foldx
-    ddg_method = 'foldx'
+    ddg_method = 'bindprofx'
     
     # Minimum reduction in binding free energy DDG required for interaction perturbation
     ddgCutoff = 0.5
@@ -62,7 +62,7 @@ def main():
     CI = 95
     
     # plot perturbed interactome and produce files for use by Cytoscape
-    plot_perturbations = True
+    plot_perturbations = False
     
     # show figures
     showFigs = False
@@ -184,8 +184,11 @@ def main():
              ylim = [0, 0.8],
              colors = ['green', 'red'],
              edgecolor = 'black',
+             ewidth = 2.5,
              barwidth = 0.6,
              fontsize = 24,
+             capsize = 10,
+             msize = 26,
              show = showFigs,
              figdir = figDir,
              figname = 'mut_ddg_frac_>%.1f_%s' % (ddgCutoff, ddg_method))

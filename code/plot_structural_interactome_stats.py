@@ -58,6 +58,7 @@ def main():
         distribution.append([numPPIsPerPDB_capped.count(i) for i in np.arange(1, maxVal + 1)])
     
     multi_bar_plot(distribution,
+                   errors = [[0], [0]],
                    xlabels = list(map(str, np.arange(1, maxVal))) + [ str(maxVal) + '+'],
                    xlabel = 'Number of PPIs modeled by PDB structure',
                    ylabel = 'Number of PDB structures',
@@ -65,8 +66,11 @@ def main():
                    ylim = [0, 2000],
                    colors = interactome_colors,
                    edgecolor = 'k',
+                   ewidth = 1.5,
                    barwidth = 0.4,
                    fontsize = 22,
+                   capsize = 0,
+                   msize = 12,
                    leg = struc_interactome_names,
                    show = showFigs,
                    figdir = figDir,

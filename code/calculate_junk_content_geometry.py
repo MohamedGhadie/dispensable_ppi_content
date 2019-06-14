@@ -21,7 +21,7 @@ def main():
     
     # reference interactome name
     # options: HI-II-14, IntAct
-    interactome_name = 'IntAct'
+    interactome_name = 'HI-II-14'
     
     # set to True to calculate junk PPI content using fraction of mono-edgetic mutations 
     # instead of edgetic mutations
@@ -57,8 +57,6 @@ def main():
     junkPPIFile = interactomeDir / ('fraction_junk_PPIs_geometry%s.pkl' % ('_monoedgetic' if mono_edgetic else ''))
     
     # create output directories if not existing
-    if not procDir.exists():
-        os.makedirs(procDir)
     if not interactomeDir.exists():
         os.makedirs(interactomeDir)
     if not figDir.exists():

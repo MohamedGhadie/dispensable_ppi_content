@@ -8,6 +8,7 @@ from mutation_processing_tools import parse_dbsnp_flatfile_keys, parse_dbsnp_fla
 
 def main():
     
+    # chromosome number
     chr = '1'
     
     # parent directory of all data files

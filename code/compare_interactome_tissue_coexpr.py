@@ -27,11 +27,11 @@ def main():
     
     # reference interactome name
     # options: HI-II-14, IntAct
-    interactome_name = 'IntAct'
+    interactome_name = 'HI-II-14'
     
     # tissue expression database name
     # options: Illumina, GTEx, HPA, Fantom5
-    expr_db = 'Fantom5'
+    expr_db = 'Illumina'
     
     # minimum number of tissue expression values required for protein pair tissue
     # co-expression to be considered
@@ -50,7 +50,7 @@ def main():
     dataDir = Path('../data')
     
     # directory of data files from external sources
-    extDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data/external')
+    extDir = dataDir / 'external'
     
     # parent directory of all processed data files
     procDir = dataDir / 'processed'

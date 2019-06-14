@@ -27,7 +27,7 @@ def main():
     interactome_name = 'HI-II-14'
     
     # plot perturbed interactome and produce files for use by Cytoscape
-    plot_perturbations = True
+    plot_perturbations = False
     
     # show figures
     showFigs = False

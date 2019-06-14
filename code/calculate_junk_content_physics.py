@@ -21,18 +21,15 @@ def main():
     
     # reference interactome name
     # options: HI-II-14, IntAct
-    interactome_name = 'IntAct'
+    interactome_name = 'HI-II-14'
     
     # method of calculating mutation ∆∆G for which results will be used
     # options: bindprofx, foldx
-    ddg_method = 'foldx'
+    ddg_method = 'bindprofx'
     
     # set to True to calculate junk PPI content using fraction of mono-edgetic mutations 
     # instead of fraction of edgetic mutations
     mono_edgetic = False
-    
-    # Minimum reduction in binding free energy DDG required for interaction perturbation
-    ddgCutoff = 0.5
     
     # calculate confidence interval for the fraction of junk PPIs
     computeConfidenceIntervals = True
@@ -64,8 +61,6 @@ def main():
     junkPPIFile = interactomeDir / ('fraction_junk_PPIs_physics_%s%s.pkl' % (ddg_method, '_monoedgetic' if mono_edgetic else ''))
     
     # create output directories if not existing
-    if not procDir.exists():
-        os.makedirs(procDir)
     if not interactomeDir.exists():
         os.makedirs(interactomeDir)
     if not figDir.exists():

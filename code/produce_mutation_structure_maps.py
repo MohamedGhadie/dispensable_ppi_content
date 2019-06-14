@@ -19,8 +19,12 @@ def main():
     # options: HI-II-14, IntAct
     interactome_name = 'HI-II-14'
     
+    # method of calculating mutation ∆∆G for which results will be used
+    # options: bindprofx, foldx
+    ddg_method = 'bindprofx'
+    
     # allow PDB structure files to be downloaded
-    download_pdbs = True
+    download_pdbs = False
     
     # suppress PDB warnings
     suppress_pdb_warnings = True
@@ -35,7 +39,7 @@ def main():
     interactomeDir = procDir / interactome_name
     
     # directory for PDB structure files
-    pdbDir = Path('/Volumes/MG_Samsung/pdb_files')
+    pdbDir = Path('../pdb_files')
     
     # input data files
     ProteinSeqFile = procDir / 'human_reference_sequences.pkl'    
@@ -48,8 +52,8 @@ def main():
     interfaceAnnotatedInteractomeFile = interactomeDir / 'human_interface_annotated_interactome.txt'
     
     # output data files
-    natural_mutations_onchains_file = interactomeDir / 'nondisease_mutations_onchains.txt'
-    disease_mutations_onchains_file = interactomeDir / 'disease_mutations_onchains.txt'
+    natural_mutations_onchains_file = interactomeDir / ('nondisease_mutations_%s_ddg.txt' % ddg_method)
+    disease_mutations_onchains_file = interactomeDir / ('disease_mutations_%s_ddg.txt' % ddg_method)
     
     # create output directories if not existing
     if not procDir.exists():

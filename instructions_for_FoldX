@@ -1,0 +1,28 @@
+
+To produce ∆∆G values using the FoldX method, follow the instructions below. Throughout the instructions, “junk_ppi_content” refers to your project directory, and <interactomeDir> refers to the interactome data directory “junk_ppi_content/data/processed/<interactome_name>” where <interactome_name> is the name of the reference interactome you are working on, either HI-II-14 or IntAct. Fold requires Python 2.
+
+1 - Register for a license with FoldX (http://foldxsuite.crg.eu/products#foldx)
+
+2 - Change working directory to <interactomeDir> and create a folder called ‘foldx’
+
+3 - Change working directory to <interactomeDir>/foldx and create a folder called ‘jobs’ and a folder called ‘archived’
+
+4 - Download FoldX for Linux and extract files in directory <interactomeDir>/foldx
+
+5 - Copy the file rotabase.txt into folder jobs/
+
+6 - change working directory to junk_ppi_content/code.
+
+7 - Run the script produce_foldx_jobs.py to produce data files for each job to be submitted to FoldX. These produced jobs will be saved in the data directory “<interactomeDir>/foldx/data”.
+
+8 - Change working directory to <interactomeDir>/foldx/jobs
+
+9 - For each data folder in <interactomeDir>/foldx/data, run the two commands “foldx -f <path_to_data_folder>/config_repairPDB.cfg” and “foldx -f <path_to_data_folder>/config_pssm.cfg“, where <path_to_data_folder> is the full path to the data folder. FoldX will save results in the same data folder.
+
+10 - Change working directory to <interactomeDir>/foldx
+
+11 - Copy folder data/ into archive folder archived/, and rename folder data/ to results/.
+
+12 - Change working directory to junk_ppi_content/code
+
+13 - Run the script process_foldx_results.py to process foldx results.

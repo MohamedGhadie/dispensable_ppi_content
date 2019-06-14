@@ -3,12 +3,15 @@
 #----------------------------------------------------------------------------------------
 
 import io
+import os
 import time
 import pickle
-from pathlib import Path
-from Bio import Seq, SeqIO
+import subprocess
 import pandas as pd
 import numpy as np
+from pathlib import Path
+from Bio import Seq, SeqIO
+from random import sample
 
 def parse_IntAct_interactions (inPath,
                                spListFile,
@@ -344,12 +347,13 @@ def read_list_table (inPath, cols, dtyp, delm = '\t'):
         delm (str): delimiter used to read table.
 
     """
-    df = pd.read_table(inPath, dtype = str, sep = delm)
+    df = pd.read_table(inPath, sep = delm)
     if not isinstance(cols, (list, tuple)):
         cols = [cols]
         dtyp = [dtyp]
-    for i, col in enumerate(cols):
-        df[col] = df[col].apply(lambda x: list(map(dtyp[i], map(str.strip, x.split(',')))))
+    for col, typ in zip(cols, dtyp):
+        strcol = df[col].apply(str)
+        df[col] = strcol.apply(lambda x: list(map(typ, map(str.strip, x.split(',')))))
     return df
 
 def write_list_table (df, cols, outPath, delm = '\t'):
@@ -370,16 +374,16 @@ def write_list_table (df, cols, outPath, delm = '\t'):
         df[cols] = df[cols].apply(lambda x: ','.join(map(str, x)))
     df.to_csv(outPath, index=False, sep=delm)
 
-def write_hpc_job (outPath,
-                   nodes = 1,
-                   ppn = 1,
-                   pmem = 7700,
-                   walltime = '1:00:00:00',
-                   outputfile = 'outputfile',
-                   errorfile = 'errorfile',
-                   rapid = None,
-                   jobid = None,
-                   commands = None):
+def write_guillimin_job (outPath,
+                         nodes = 1,
+                         ppn = 1,
+                         pmem = 7700,
+                         walltime = '1:00:00:00',
+                         outputfile = 'outputfile',
+                         errorfile = 'errorfile',
+                         rapid = None,
+                         jobid = None,
+                         commands = None):
     """Create a job file to be run by McGill HPC server.
         See http://www.hpc.mcgill.ca
 
@@ -409,3 +413,83 @@ def write_hpc_job (outPath,
         if commands:
             for cmd in commands:
                 fout.write('\n' + cmd)
+
+def write_beluga_job (outPath,
+                      account = 'def-yxia',
+                      walltime = '1-00',
+                      ntasks = 1,
+                      nodes = 1,
+                      ntasks_per_node = 1,
+                      cpus_per_task = 1,
+                      mem = None,
+                      mem_per_cpu = '4000M',
+                      outputfile = '%x-%j.out',
+                      errorfile = None,
+                      jobname = None,
+                      commands = None):
+    """Create a job file to be run on Compute Canada Beluga cluster.
+        See https://docs.computecanada.ca/wiki/Béluga/en
+
+    Args:
+        outPath (Path): path to save job file to.
+        account (str): project account name.
+        walltime (str): maximum time allowed for job to run in the format days:hr:min:sec.
+        ntasks (numeric): number of processes to be allocated.
+        nodes (numeric): number of server nodes to be allocated.
+        ntasks_per_node (numeric): number of processes to be allocated per node.
+        cpus_per_task (numeric): number of nodes to be allocated per process.
+        mem (numeric): memory per node.
+        mem_per_cpu (numeric): memory per core.
+        outputfile (Path): path to file where standard output is written.
+        errorfile (Path): path to file where runtime error is written.
+        jobname (str): job name.
+        commands (list): commands in string format to be executed by job.
+
+    """
+    with io.open(outPath, "w") as fout:
+        fout.write('#!/bin/bash')
+        fout.write('\n' + '#SBATCH --account=%s' % account)
+        fout.write('\n' + '#SBATCH --time=%s' % walltime)
+        fout.write('\n' + '#SBATCH --ntasks=%d' % ntasks)
+        fout.write('\n' + '#SBATCH --nodes=%d' % nodes)
+        fout.write('\n' + '#SBATCH --ntasks-per-node=%d' % ntasks_per_node)
+        fout.write('\n' + '#SBATCH --cpus-per-task=%d' %cpus_per_task)
+        if mem:
+            fout.write('\n' + '#SBATCH --mem=%s' % mem)
+        fout.write('\n' + '#SBATCH --mem-per-cpu=%s' % mem_per_cpu)
+        fout.write('\n' + '#SBATCH --output=%s' % outputfile)
+        if errorfile:
+            fout.write('\n' + '#SBATCH --error=%s' % errorfile)
+        if jobname:
+            fout.write('\n' + '#SBATCH --job-name=%s' % jobname)
+        if commands:
+            fout.write('\n')
+            for cmd in commands:
+                fout.write('\n' + cmd)
+
+def sample_files (inDir, outDir, sampleSize):
+    """Select a sample of files from a directory.
+
+    Args:
+        inDir (Path): file directory containing files to sample from.
+        outDir (Path): file directory to save sampled files to.
+        sampleSize (int): number of files to sample.
+
+    """
+    jobDir = inDir / 'jobs'
+    dataDir = inDir / 'data'
+    jobOutDir = outDir / 'jobs'
+    dataOutDir = outDir / 'data'
+    if not jobOutDir.exists():
+        os.makedirs(jobOutDir)
+    if not dataOutDir.exists():
+        os.makedirs(dataOutDir)
+    
+    jobFiles = os.listdir(jobDir)
+    sampleJobs = sample (jobFiles, sampleSize)
+    for jobFile in sampleJobs:
+        cmd = ['cp', '-a', str(jobDir / jobFile), str(jobOutDir)]
+        subprocess.run(cmd)
+        dataFolder = jobFile.rsplit('_',1)[0]
+        cmd = ['cp', '-a', str(dataDir / dataFolder), str(dataOutDir)]
+        subprocess.run(cmd)

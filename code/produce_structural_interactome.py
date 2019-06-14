@@ -11,15 +11,12 @@
 import os
 import pickle
 import pandas as pd
-from random import sample
 from pathlib import Path
 from pdb_tools import download_structures
 from text_tools import parse_blast_file
 from id_mapping import produce_protein_chain_dict
 from interactome_tools import (read_chain_annotated_interactome,
-                               write_chain_annotated_interactome_to_excel,
-                               read_single_interface_annotated_interactome,
-                               write_single_interface_annotated_interactome_to_excel)
+                               read_single_interface_annotated_interactome)
 from structural_annotation import (locate_alignments,
                                    filter_chain_annotations,
                                    produce_alignment_evalue_dict,
@@ -34,7 +31,7 @@ def main():
     
     # reference interactome name
     # options: HI-II-14, IntAct
-    interactome_name = 'IntAct'
+    interactome_name = 'HI-II-14'
     
     # Maximum e-value cutoff to filter out protein-chain annotations
     evalue = 1e-10
@@ -46,7 +43,7 @@ def main():
     # positions to be considered aligned
     resMatch = False
     
-    # consider only interfaces with this minimum coverage fraction successfully mapped onto PPI
+    # consider only interfaces with this minimum fraction mapped onto PPI
     mapCutoff = 0.5
     
     # max binding distance for interface residues in PDB structure
@@ -66,7 +63,7 @@ def main():
     randChainPairs = False
     
     # download missing PDB structures whose chain pairs map onto interactome
-    download_missing_structures = False
+    download_missing_structures = True
     
     # allow downloading of PDB structures while constructing the structural interactome
     allow_pdb_downloads = True
@@ -81,7 +78,7 @@ def main():
     dataDir = Path('../data')
     
     # directory of data files from external sources
-    extDir = Path('/Volumes/MG_Samsung/junk_ppi_content/data/external')
+    extDir = dataDir / 'external'
     
     # parent directory of all processed data files
     procDir = dataDir / 'processed'
@@ -93,7 +90,7 @@ def main():
     figDir = Path('../figures') / interactome_name
         
     # directory for PDB structure files
-    pdbDir = Path('/Volumes/MG_Samsung/pdb_files')
+    pdbDir = Path('../pdb_files')
     
     # input data files
     pdbBlastFile = extDir / 'human_pdb_e-5'
@@ -112,6 +109,8 @@ def main():
     alignmentEvalueFile = procDir / 'human_protein_chain_min_alignment_evalues.pkl'
     chainInterfaceFile = procDir / 'pdb_interfaces.txt'
     chainAnnotatedInteractomeFile = interactomeDir / 'human_chain_annotated_interactome.txt'
+    chainIDFile = interactomeDir / 'interactome_chainIDs.txt'
+    pdbIDFile = interactomeDir / 'interactome_pdbIDs.txt'
     interfaceAnnotatedInteractomeFile1 = interactomeDir / 'human_interface_annotated_interactome_withDuplicates.txt'
     interfaceAnnotatedInteractomeFile = interactomeDir / 'human_interface_annotated_interactome.txt'
     refInteractomeChainMapFile = interactomeDir / 'ref_interactome_pdb_chain_map.txt'
@@ -187,6 +186,21 @@ def main():
     print( '%d proteins' % len(interactomeProteins) )
     print()
     
+    uniqueChains = set()
+    for ls in chainAnnotatedInteractome["Mapping_chains"].values:
+        for pair in ls:
+            uniqueChains.update(pair)
+    uniquePDBs = {id.split('_')[0] for id in uniqueChains}
+    print('\n' + 'Interactome chain-pair annotations:')
+    print('%d unique chains in %d unique PDB structures' % (len(uniqueChains), len(uniquePDBs)))
+    
+    with open(chainIDFile, 'w') as f:
+        for i in sorted(uniqueChains):
+            f.write("%s\n" % i)
+    with open(pdbIDFile, 'w') as f:
+        for i in sorted(uniquePDBs):
+            f.write("%s\n" % i)
+    
     if not refInteractomeChainMapFile.is_file():
         print('filtering chain annotations by reference chain-annotated interactome proteins')
         filter_chain_annotations_by_protein (chainMapFile3,
@@ -195,8 +209,7 @@ def main():
     
     if download_missing_structures:
         print('downloading missing structures for PDB IDs mapping onto interactome')
-        download_structures( interactomeDir / 'interactome_pdbIDs.txt',
-                             pdbDir )
+        download_structures (pdbIDFile, pdbDir)
     
     if not interfaceAnnotatedInteractomeFile1.is_file():
         print('mapping chain interfaces onto chain-annotated interactome')

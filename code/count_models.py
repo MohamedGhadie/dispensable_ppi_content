@@ -16,7 +16,7 @@ def main():
     
     # reference interactome name
     # options: HI-II-14, IntAct
-    interactome_name = 'IntAct'
+    interactome_name = 'HI-II-14'
     
     # parent directory of all data files
     dataDir = Path('../data')

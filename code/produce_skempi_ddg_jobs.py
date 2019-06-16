@@ -36,7 +36,7 @@ def main():
     outDir = skempiDir / ddg_method
     
     # directory of PDB structure files
-    pdbDir = Path('/Volumes/MG_Samsung/pdb_files')
+    pdbDir = Path('../pdb_files')
     
     # input file containing mutations to submit to bindprofx
     mutationsFile = skempiDir / ('skempi_%s_mutations_%s_ddg.txt' % (structure, ddg_method))

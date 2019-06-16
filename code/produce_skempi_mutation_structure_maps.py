@@ -30,7 +30,7 @@ def main():
     skempiDir = procDir / 'skempi'
     
     # directory for PDB structure files
-    pdbDir = Path('/Volumes/MG_Samsung/pdb_files')
+    pdbDir = Path('../pdb_files')
     
     # input data files
     processedSkempiFile = skempiDir / 'processed_skempi_mutations.txt'

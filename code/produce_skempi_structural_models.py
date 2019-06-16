@@ -7,16 +7,14 @@
 # - 
 #----------------------------------------------------------------------------------------
 
-import io
 import os
-import pandas as pd
 from pathlib import Path
-from Bio import SeqIO
-from text_tools import parse_blast_file, read_list_table, write_list_table
+from text_tools import parse_blast_file
 from pdb_tools import download_structures
 from id_mapping import produce_protein_chain_dict
 from interactome_tools import read_chain_annotated_interactome, read_single_interface_annotated_interactome
 from structural_annotation import (locate_alignments,
+                                   filter_skempi_chain_annotations,
                                    produce_alignment_evalue_dict,
                                    produce_chain_annotated_interactome,
                                    produce_interface_annotated_interactome,
@@ -45,9 +43,6 @@ def main():
     
     # suppress PDB warnings when constructing the structural interactome
     suppress_pdb_warnings = True
-
-    # show figures
-    showFigs = False
     
     # parent directory of all data files
     dataDir = Path('../data')
@@ -59,23 +54,17 @@ def main():
     procDir = dataDir / 'processed'
     
     skempiDir = procDir / 'skempi'
-        
-    # figure directory
-    figDir = Path('../figures') / 'foldx_evaluation'
     
     # directory for PDB structure files
     pdbDir = Path('/Volumes/MG_Samsung/pdb_files')
     
     # input data files
-    skempiFile = extDir / 'skempi_v2.csv'
-    pdbSeqresFile = extDir / 'pdb_seqres_reduced.fasta'
     pdbBlastFile = extDir / 'skempi_pdb_e1'
     chainSeqFile = procDir / 'chain_sequences.pkl'
     chainStrucResFile = procDir / 'chain_strucRes.pkl'
+    interactomeFile = skempiDir / 'skempi_interactome.txt'
     
     # output data files
-    interactomeFile = skempiDir / 'skempi_interactome.txt'
-    skempiSeqFile = skempiDir / 'skempi_sequences.fasta'
     chainMapFile1 = skempiDir / 'skempi_pdb_alignment.txt'
     chainMapFile2 = skempiDir / 'skempi_pdb_chain_map.txt'
     chainMapFile3 = skempiDir / 'skempi_pdb_chain_map_filtered.txt'
@@ -87,51 +76,12 @@ def main():
     pdbIDFile = skempiDir / 'interactome_pdbIDs.txt'
     interfaceAnnotatedInteractomeFile1 = skempiDir / 'skempi_interface_annotated_interactome_withDuplicates.txt'
     interfaceAnnotatedInteractomeFile = skempiDir / 'skempi_interface_annotated_interactome.txt'
-    mutationModelMapFile = skempiDir / 'skempi_mutations_foldx_ddg.txt'
     
     # create directories if not existing
     if not skempiDir.exists():
         os.makedirs(skempiDir)
-    if not figDir.exists():
-        os.makedirs(figDir)
-    
-    #------------------------------------------------------------------------------------
-    # load reference and structural interactomes
-    #------------------------------------------------------------------------------------
-    
-    mutations = pd.read_table (skempiFile, sep=';')
-    
-    chainList1, chainList2, nameList1, nameList2 = [], [], [], []
-    for pdb, name_1, name_2 in mutations[["#Pdb", "Protein 1", "Protein 2"]].values:
-        pdb, chain_1, chain_2 = pdb.split('_')
-        pdb = pdb.lower()
-        if (len(chain_1) == 1) and (len(chain_2) == 1):
-            chainList1.append(pdb + '_' + chain_1)
-            chainList2.append(pdb + '_' + chain_2)
-            nameList1.append(name_1)
-            nameList2.append(name_2)
-    interactome = pd.DataFrame(data={"Protein_1":chainList1,
-                                     "Protein_2":chainList2,
-                                     "Name_1":nameList1,
-                                     "Name_2":nameList2})
-    interactome = interactome.drop_duplicates(subset=['Protein_1','Protein_2'])
-    
-    interactome.to_csv(interactomeFile, index=False, sep='\t')
-    chainIDs = sorted(set(interactome.values.flatten()))
-    print('Number of interactions extracted from Skempi structures: %d' % len(interactome))
-    print('Number of chain IDs extracted from Skempi structures: %d' % len(chainIDs))
-    
-    if not skempiSeqFile.is_file():
-        seqres = {}
-        s = list(SeqIO.parse(str(pdbSeqresFile), 'fasta'))
-        for _, row in enumerate(s):
-            seqres[row.id] = str(row.seq)
-    
-        with io.open(skempiSeqFile, "w") as fout:
-            for id in chainIDs:
-                if id in seqres:
-                    fout.write('>' + id + '\n')
-                    fout.write(seqres[id] + '\n')
+    if not pdbDir.exists():
+        os.makedirs(pdbDir)
     
     if not chainMapFile1.is_file():
         print('parsing BLAST protein-chain alignment file')
@@ -144,16 +94,11 @@ def main():
                            resMatch = False,
                            pausetime = 0)
     
-    chainMap = read_list_table (chainMapFile2, cols=["Qpos", "Spos"], dtyp=[int, int])
-    chainMap["Qcov"] = chainMap["Qpos"].apply(len) / chainMap["Qlen"]
-    chainMap["Scov"] = chainMap["Spos"].apply(len) / chainMap["Slen"]
-    chainMap = chainMap[(chainMap["Qcov"] >= minCov) & (chainMap["Scov"] >= minCov) & 
-                        ((chainMap["Qcov"] < maxCov) | (chainMap["Scov"] < maxCov))].reset_index(drop=True)
-    
-    chainMap = chainMap.sort_values(by=["Qcov", "Scov"], axis=0, ascending=False)
-    chainMap = chainMap.drop_duplicates(subset=['Query','Subject'], keep='first')
-    chainMap = chainMap.sort_values(by=['Query','Subject'], axis=0, ascending=True)
-    write_list_table (chainMap, ["Qpos", "Spos"], chainMapFile3, delm = '\t')
+    if not chainMapFile3.is_file():
+        filter_skempi_chain_annotations (chainMapFile2,
+                                         chainMapFile3,
+                                         minCov = minCov,
+                                         maxCov = maxCov)
 
     if not proteinChainsFile.is_file():
         print('producing protein chains dictionary')

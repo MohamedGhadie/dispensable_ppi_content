@@ -11,7 +11,7 @@ import numpy as np
 from pathlib import Path
 from random import sample
 from simple_tools import create_dir, isolate_pairs, merge_list_pairs
-from text_tools import read_list_table
+from text_tools import read_list_table, write_list_table
 from interactome_tools import (write_chain_annotated_interactome,
                                read_chain_annotated_interactome,
                                write_unmerged_interface_annotated_interactome,
@@ -716,6 +716,19 @@ def process_skempi_mutations (mutationFile,
     
     print('%d out of %d mutations selected' % (len(expanded_mutations), len(mutations)))
     expanded_mutations.to_csv(outPath, index=False, sep = '\t')
+
+def filter_skempi_chain_annotations (inPath, outPath, minCov = 0, maxCov = 1):
+    
+    chainMap = read_list_table (inPath, cols=["Qpos", "Spos"], dtyp=[int, int])
+    chainMap["Qcov"] = chainMap["Qpos"].apply(len) / chainMap["Qlen"]
+    chainMap["Scov"] = chainMap["Spos"].apply(len) / chainMap["Slen"]
+    chainMap = chainMap[(chainMap["Qcov"] >= minCov) & (chainMap["Scov"] >= minCov) & 
+                        ((chainMap["Qcov"] < maxCov) | (chainMap["Scov"] < maxCov))].reset_index(drop=True)
+    
+    chainMap = chainMap.sort_values(by=["Qcov", "Scov"], axis=0, ascending=False)
+    chainMap = chainMap.drop_duplicates(subset=['Query','Subject'], keep='first')
+    chainMap = chainMap.sort_values(by=['Query','Subject'], axis=0, ascending=True)
+    write_list_table (chainMap, ["Qpos", "Spos"], outPath, delm = '\t')
 
 def write_skempi_mutation_crystal_maps (inPath, outPath, modelddgFile = None):
     

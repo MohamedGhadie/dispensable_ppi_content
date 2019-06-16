@@ -120,6 +120,8 @@ def main():
         os.makedirs(procDir)
     if not interactomeDir.exists():
         os.makedirs(interactomeDir)
+    if not pdbDir.exists():
+        os.makedirs(pdbDir)
     if not figDir.exists():
         os.makedirs(figDir)
     

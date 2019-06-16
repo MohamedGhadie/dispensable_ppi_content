@@ -131,6 +131,31 @@ def parse_HI_II_14_interactome (inPath,
         interactome = interactome[interactome["Protein_1"]!=interactome["Protein_2"]].reset_index(drop=True)
     interactome.to_csv(outPath, index=False, sep='\t')
 
+def parse_skempi_interactome (inPath, outPath):
+    
+    mutations = pd.read_table (inPath, sep=';')
+    
+    chainList1, chainList2, nameList1, nameList2 = [], [], [], []
+    for pdb, name_1, name_2 in mutations[["#Pdb", "Protein 1", "Protein 2"]].values:
+        pdb, chain_1, chain_2 = pdb.split('_')
+        pdb = pdb.lower()
+        if (len(chain_1) == 1) and (len(chain_2) == 1):
+            chainList1.append(pdb + '_' + chain_1)
+            chainList2.append(pdb + '_' + chain_2)
+            nameList1.append(name_1)
+            nameList2.append(name_2)
+    
+    interactome = pd.DataFrame(data={"Protein_1":chainList1,
+                                     "Protein_2":chainList2,
+                                     "Name_1":nameList1,
+                                     "Name_2":nameList2})
+    interactome = interactome.drop_duplicates(subset=['Protein_1','Protein_2'])
+    interactome.to_csv(outPath, index=False, sep='\t')
+    
+    chainIDs = sorted(set(interactome.values.flatten()))
+    print('Number of interactions extracted from Skempi structures: %d' % len(interactome))
+    print('Number of chain IDs extracted from Skempi structures: %d' % len(chainIDs))
+
 def parse_refSeq_fasta (inPath, outPath):
     """Convert RefSeq fasta protein sequence file to tab-delimited file.
 

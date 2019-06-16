@@ -78,7 +78,7 @@ def main():
              ylabels = [-15, -10, -5, 0, 5],
              ylabel = 'PAM30 substitution score',
              ylim = [-16, 5],
-             colors = ['green', 'red'],
+             colors = ['turquoise', 'magenta'],
              fontsize = 26,
              show = showFigs,
              figdir = figDir,

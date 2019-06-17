@@ -6,6 +6,8 @@
 # Run the following scripts before running this script:
 # - produce_data_mappings.py
 # - process_interactome.py
+# - BLAST human protein sequences against PDB sequences and save results into path
+#   ../data/external/human_pdb_e-5
 #----------------------------------------------------------------------------------------
 
 import os

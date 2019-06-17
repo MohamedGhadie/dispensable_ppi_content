@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------------------------
-# Modules for calculating and processing mutation ∆∆G data.
+# Modules for calculating and processing change in free energy (∆∆G) data.
 #----------------------------------------------------------------------------------------
 
 import os

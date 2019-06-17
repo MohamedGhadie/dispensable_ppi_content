@@ -103,7 +103,7 @@ def produce_protein_go_dictionaries (inPath,
     produce_protein_go_dict (inPath, BP_outPath, aspect = 'P')
     produce_protein_go_dict (inPath, CC_outPath, aspect = 'C')
 
-def produce_protein_go_dict(inPath, outPath, aspect = None):
+def produce_protein_go_dict (inPath, outPath, aspect = None):
     """Make a dictionary of protein gene ontology (GO) associations.
 
     Args:
@@ -146,7 +146,7 @@ def produce_protein_go_dict(inPath, outPath, aspect = None):
     with open(outPath, 'wb') as fOut:
         pickle.dump(go, fOut)
 
-def get_all_go_terms(inPath, aspect = None):
+def get_all_go_terms (inPath, aspect = None):
     """Return a list of all GO terms.
 
     Args:
@@ -201,12 +201,27 @@ def produce_fastsemsim_protein_gosim_dict (inPath,
                                            paramOutFile = 'fastsemsim_parameters',
                                            fastsemsimOutFile = 'fastsemsim_output'):
     """Calculate gene ontology (GO) similarity using fastsemsim library.
-
+        See https://pythonhosted.org/fastsemsim/
     Args:
-        
-    
-    Returns:
-        
+        inPath (Path): path to file containing list of proteins (pairs or singles).
+        outPath (Path): path to file where protein GO similarity dictionary is saved to.
+        task (str): calculation to perform.
+        ont_type (str): type of ontology.
+        sim_measure (str): measure used to calculate GO similarity.
+        mix_method (str): mixing strategy used by pairwise semantic similarity measures.
+        cutoff (numeric): filter out GO similarity results below this cutoff.
+        remove_nan (bool): remove NaN values from results.
+        query_mode (str): input file format; either pairs or list of proteins.
+        query_ss_type (str): query type; ex objects annotated with ontology terms.
+        ac_species (str): species name.
+        ont_root (str): root ontology; biological_process, molecular function or cellular component.
+        ont_ignore (list): relationships to ignore.
+        ec_ignore (list): evidence codes to ignore.
+        verbosity (str): verbosity level.
+        ontologyFile (Path): path to gene ontology file.
+        annotationFile (Path): path to gene ontology associations.
+        paramOutFile (Path): path to save Fastsemsim input parameters.
+        fastsemsimOutFile (Path): path to save Fastsemsim output.
     
     """
     if annotationFile:
@@ -357,6 +372,9 @@ def produce_fantom5_expr_dict (inPath,
         inDir (Path): file directory containing Fantom5 tissue expression data files.
         uniprotIDmapFile (Path): path to file containing dict of mappings to UniProt IDs.
         outPath (Path): file path to save output dict to.
+        sampleTypes (str): type of sample; ex tissues.
+        sampleTypeFile (Path): path to Fantom5 sample type spreadsheet.
+        uniprotIDlistFile (Path): path to file containing list of UniProt IDs for output.
 
     """
     with open(uniprotIDmapFile, 'rb') as f:

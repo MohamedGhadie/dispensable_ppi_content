@@ -1,3 +1,11 @@
+#----------------------------------------------------------------------------------------
+# Map single-point mutations in SKEMPI onto structures to be submitted for 
+# ∆∆G calculations.
+#
+# Run the following scripts before running this script:
+# - produce_data_mappings.py
+# - process_skempi_file.py
+#----------------------------------------------------------------------------------------
 
 import os
 from pathlib import Path
@@ -9,11 +17,11 @@ def main():
     # options: model, crystal
     structure = 'model'
     
-    filter_by_model_ddg = True
+    filter_by_model_ddg = False
     
     # method of calculating mutation ∆∆G
     # options: bindprofx, foldx
-    ddg_method = 'bindprofx'
+    ddg_method = 'foldx'
     
     # allow downloading of PDB structures while constructing the structural interactome
     allow_pdb_downloads = True
@@ -38,12 +46,12 @@ def main():
     chainMapFile = skempiDir / 'skempi_pdb_chain_map_filtered.txt'
     chainSeqFile = procDir / 'chain_sequences.pkl'
     chainStrucResFile = procDir / 'chain_strucRes.pkl'
-    chainInterfaceFile = skempiDir / 'pdb_interfaces.txt'
+    chainInterfaceFile = procDir / 'pdb_interfaces.txt'
 #     modelddgFile = skempiDir / ('skempi_model_mutations_%s_ddg.txt' % ddg_method)
     modelddgFile = skempiDir / 'skempi_model_mutations_foldx_ddg.txt'
     
     # output data files
-    mutationModelMapFile = skempiDir / ('skempi_%s_mutations_%s_ddg.txt' % (structure, ddg_method))
+    mutationMapFile = skempiDir / ('skempi_%s_mutations_%s_ddg.txt' % (structure, ddg_method))
     
     # create directories if not existing
     if not skempiDir.exists():
@@ -52,26 +60,27 @@ def main():
         os.makedirs(pdbDir)
     
     if structure is 'model':
-        if not mutationModelMapFile.is_file():
+        if not mutationMapFile.is_file():
+            if not chainInterfaceFile.is_file():
+                chainInterfaceFile = None
             write_skempi_mutation_structure_maps (processedSkempiFile,
                                                   interactomeFile,
                                                   chainMapFile,
                                                   chainSeqFile,
                                                   chainStrucResFile,
                                                   pdbDir,
-                                                  mutationModelMapFile,
+                                                  mutationMapFile,
                                                   chainInterfaceFile = chainInterfaceFile,
                                                   downloadPDB = allow_pdb_downloads,
                                                   suppressWarnings = suppress_pdb_warnings)
     elif structure is 'crystal':
-        if not mutationModelMapFile.is_file():
-            if filter_by_model_ddg:
+        if not mutationMapFile.is_file():
+            if filter_by_model_ddg and modelddgFile.is_file():
                 write_skempi_mutation_crystal_maps (processedSkempiFile,
-                                                    mutationModelMapFile,
+                                                    mutationMapFile,
                                                     modelddgFile = modelddgFile)
             else:
-                write_skempi_mutation_crystal_maps (processedSkempiFile, mutationModelMapFile)
-        
+                write_skempi_mutation_crystal_maps (processedSkempiFile, mutationMapFile)
 
 if __name__ == '__main__':
     main()

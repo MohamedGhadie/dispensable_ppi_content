@@ -213,7 +213,7 @@ def produce_chain_strucRes_dict (inPath, outPath):
 
     Args:
         inPath (Path): path to file containing PDB chain residue labels.
-                      See https://cdn.rcsb.org/etl/kabschSander/ss_dis.txt.gz
+                        See https://cdn.rcsb.org/etl/kabschSander/ss_dis.txt.gz
         outPath (Path): path to save pickle file to.
 
     """

@@ -252,8 +252,6 @@ def filter_chain_annotations (inPath, evalue, chainCoverage, outPath):
     chainMap = chainMap[chainMap["Expect"] < evalue]
     chainMap["chain_cov"] = chainMap["Spos"].apply(len) / chainMap["Slen"]
     chainMap = chainMap[chainMap["chain_cov"] >= chainCoverage].reset_index(drop=True)
-#     chainMap = chainMap[(chainMap["Send"] - chainMap["Sstart"])
-#                         >= chainMap["Slen"] * chainCoverage].reset_index(drop=True)
     chainMap = chainMap.sort_values("Expect", axis=0, ascending=True)
     chainMap = chainMap.drop_duplicates(subset=['Query','Subject'], keep='first')
     chainMap = chainMap.sort_values(['Query','Subject'], axis=0, ascending=True)
@@ -624,7 +622,19 @@ def process_skempi_mutations (mutationFile,
                               outPath,
                               downloadPDB = True,
                               suppressWarnings = False):
-    
+    """Process single-point mutations from SKEMPI.
+
+    Args:
+        mutationFile (Path): path to SKEMPI mutations file.
+        chainSeqFile (Path): path to file containing dictionary of chain sequences.
+        chainStrucResFile (Path): path to file containing dict of labels for chain sequence 
+                                    positions associated with 3D coordinates.
+        pdbDir (Path): file directory containing PDB structures.
+        outPath (Path): file path to save processed mutations to.
+        downloadPDB (bool): if True, PDB structure downloads are allowed.
+        suppressWarnings (bool): if True, PDB warnings are suppressed.
+
+    """
     allow_pdb_downloads (downloadPDB)
     suppress_pdb_warnings (suppressWarnings)
     load_dictionaries (chainSequenceFile = chainSeqFile, chainStrucResLabelFile = chainStrucResFile)
@@ -718,7 +728,15 @@ def process_skempi_mutations (mutationFile,
     expanded_mutations.to_csv(outPath, index=False, sep = '\t')
 
 def filter_skempi_chain_annotations (inPath, outPath, minCov = 0, maxCov = 1):
-    
+    """Filter SKEMPI protein chain mappings bsed on sequence coverage.
+
+    Args:
+        inPath (Path): path to file containing protein-chain mappings.
+        outPath (Path): file path to save filtered mappings to.
+        minCov (numeric): minimum coverage required for protein and chain sequence.
+        maxCov (numeric): maximum coverage allowed for either one of protein or chain sequence.
+
+    """
     chainMap = read_list_table (inPath, cols=["Qpos", "Spos"], dtyp=[int, int])
     chainMap["Qcov"] = chainMap["Qpos"].apply(len) / chainMap["Qlen"]
     chainMap["Scov"] = chainMap["Spos"].apply(len) / chainMap["Slen"]
@@ -731,7 +749,16 @@ def filter_skempi_chain_annotations (inPath, outPath, minCov = 0, maxCov = 1):
     write_list_table (chainMap, ["Qpos", "Spos"], outPath, delm = '\t')
 
 def write_skempi_mutation_crystal_maps (inPath, outPath, modelddgFile = None):
-    
+    """Write SKEMPI single-point mutation mapings onto co-crystal structures to file.
+
+    Args:
+        inPath (Path): path to file containing mutations to be written.
+        outPath (Path): file path to save mutations to.
+        modelddgFile (Path): path to file containing mutation mappings onto structural
+                                models. If provided, only mutations that also have mappings
+                                onto homology models are written to file.
+
+    """
     mutations = pd.read_table (inPath, sep='\t')
     
     if modelddgFile:
@@ -773,7 +800,22 @@ def write_skempi_mutation_structure_maps (mutationFile,
                                           chainInterfaceFile = None,
                                           downloadPDB = True,
                                           suppressWarnings = False):
-    
+    """Map single-point mutations from SKEMPI onto homology models and write to file.
+
+    Args:
+        mutationFile (Path): path to file containing mutations to be mapped.
+        interactomeFile (Path): path to file containing interface-annotated interactome.
+        chainMapFile (Path): path to tab-delimited file containing protein-chain sequence alignments.
+        chainSeqFile (Path): path to file containing dictionary of chain sequences.
+        chainStrucResFile (Path): path to file containing dict of labels for chain sequence 
+                                    positions associated with 3D coordinates.
+        pdbDir (Path): file directory containing PDB structures.
+        outPath (Path): file path to save mapped mutations to.
+        chainInterfaceFile (Path): path to file containing chain-pair interfaces.
+        downloadPDB (bool): if True, PDB structure downloads are allowed.
+        suppressWarnings (bool): if True, PDB warnings are suppressed.
+
+    """
     mutations = pd.read_table (mutationFile, sep='\t')
     mutations["partners"] = mutations["partners"].apply(lambda x: [x])
     mutations["perturbations"] = mutations["perturbations"].apply(lambda x: [int(x)])
@@ -804,7 +846,7 @@ def write_mutation_structure_maps (mutations,
     """Map mutations in interface-annotated interactome onto structural models and write to file.
 
     Args:
-        mutations (DataFrame): mutations to be written to file.
+        mutations (DataFrame): mutations to be mapped.
         interactomeFile (Path): path to file containing interface-annotated interactome.
         chainMapFile (Path): path to tab-delimited file containing protein-chain sequence alignments.
         chainSeqFile (Path): path to file containing dictionary of chain sequences.

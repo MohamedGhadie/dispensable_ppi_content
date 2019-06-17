@@ -1,3 +1,10 @@
+#----------------------------------------------------------------------------------------
+# This script benchmarks mutation ∆∆G results from FoldX or BindProfX calculations against
+# experimental ∆∆G values in SKEMPI.
+#
+# Run the following script before running this script:
+# - process_skempi_file.py
+#----------------------------------------------------------------------------------------
 
 import pandas as pd
 import numpy as np

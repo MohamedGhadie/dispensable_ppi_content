@@ -1,10 +1,10 @@
 #----------------------------------------------------------------------------------------
 # This script produces jobs for SKEMPI mutations mapped onto structures to be submitted 
-# to FoldX for ∆∆G calculations. Each produced job contains only one mutation. 
-# Mutations with existing ∆∆G values in the input file are skipped.
+# to FoldX or BindProfX for ∆∆G calculations. Mutations with existing ∆∆G values in the 
+# input file are skipped.
 #
-# Requirements:
-# Files must be in format produced by script produce_mutation_structure_maps.py
+# Run the following script at least once before running this script:
+# - produce_skempi_mutation_structure_maps.py
 #----------------------------------------------------------------------------------------
 
 import os

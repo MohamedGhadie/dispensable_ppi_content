@@ -2,9 +2,10 @@
 # Produce structural models for PPIs in SKEMPI database.
 #
 # Run the following scripts before running this script:
-# - 
-# - 
-# - 
+# - produce_data_mappings.py
+# - process_skempi_file.py
+# - BLAST SKEMPI chain sequences against PDB sequences and save results into path
+#   ../data/external/skempi_pdb_e1
 #----------------------------------------------------------------------------------------
 
 import os

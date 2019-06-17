@@ -1,9 +1,9 @@
 #----------------------------------------------------------------------------------------
-# This script processes results from foldx calculations for SKEMPI mutations. Since each 
-# foldx result file contains only one mutation, no second-round jobs will be produced.
+# This script processes results from FoldX or BindProfX calculations for SKEMPI mutations. 
+# Second-round jobs may be produced.
 #
-# Requirements:
-# Files must be in format produced by script produce_mutation_structure_maps.py
+# Run the following script at least once before running this script:
+# - produce_skempi_mutation_structure_maps.py
 #----------------------------------------------------------------------------------------
 
 import os
@@ -22,7 +22,7 @@ def main():
     
     # method of calculating mutation ∆∆G
     # options: bindprofx, foldx
-    ddg_method = 'bindprofx'
+    ddg_method = 'foldx'
     
     # parent directory of all data files
     dataDir = Path('../data')
@@ -42,7 +42,7 @@ def main():
     # directory of PDB structure files
     pdbDir = Path('../pdb_files')
     
-    # output file whose ∆∆G values wil be updated
+    # input file whose ∆∆G values wil be updated
     mutationsFile = skempiDir / ('skempi_%s_mutations_%s_ddg.txt' % (structure, ddg_method))
     
     tempFile = skempiDir / ('skempi_%s_mutations_%s_ddg_2.txt' % (structure, ddg_method))

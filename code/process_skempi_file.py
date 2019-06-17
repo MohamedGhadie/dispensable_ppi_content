@@ -2,9 +2,7 @@
 # Process SKEMPI file.
 #
 # Run the following scripts before running this script:
-# - 
-# - 
-# - 
+# - produce_data_mappings.py
 #----------------------------------------------------------------------------------------
 
 import io

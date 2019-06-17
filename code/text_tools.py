@@ -132,9 +132,14 @@ def parse_HI_II_14_interactome (inPath,
     interactome.to_csv(outPath, index=False, sep='\t')
 
 def parse_skempi_interactome (inPath, outPath):
-    
+    """Read protein-protein interactions from SKEMPI mutation file.
+
+    Args:
+        inPath (Path): path to file containing SKEMPI data.
+        outPath (Path): path to protein-protein interactions in tab-delimited format.
+
+    """
     mutations = pd.read_table (inPath, sep=';')
-    
     chainList1, chainList2, nameList1, nameList2 = [], [], [], []
     for pdb, name_1, name_2 in mutations[["#Pdb", "Protein 1", "Protein 2"]].values:
         pdb, chain_1, chain_2 = pdb.split('_')

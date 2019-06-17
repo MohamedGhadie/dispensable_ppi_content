@@ -440,7 +440,7 @@ def write_guillimin_job (outPath,
                 fout.write('\n' + cmd)
 
 def write_beluga_job (outPath,
-                      account = 'def-yxia',
+                      account = 'ctb-yxia',
                       walltime = '1-00',
                       ntasks = 1,
                       nodes = 1,

@@ -1019,11 +1019,19 @@ def position_map (resPos, strucMap):
     return np.array(posMap)
 
 def is_cocrystal (protein, chain, chainMap):
-    
+    """Check if chain is a co-crystal structure of a protein.
+
+    Args:
+        protein (str): protein ID.
+        chain (str): chain ID.
+        chainMap (DataFrame): table of protein-chain sequence alignments.
+
+    Returns:
+        bool
+
+    """
     mapping = chainMap[(chainMap["Query"] == protein) & (chainMap["Subject"] == chain)].iloc[0]
     if (mapping.Identities == mapping.Qlen) and (mapping.Identities == mapping.Slen):
         return True
     else:
         return False
-
-        

@@ -4,7 +4,7 @@
 
 ## All scripts are set to do calculations on the HI-II-14 dataset (and its corresponding structural interactome Y2H-SI). To repeat calculations on the IntAct dataset (and its corresponding structural interactome IntAct-SI), set the parameter “interactome_name” in all scripts to the value “IntAct”. Some plotting scripts may require that calculations for all 3 interactomes (Y2H-SI, IntAct-SI, and experiment) be done first.
 
-## To reproduce all data files and results from scratch, set your working directory to your project directory “junk_ppi_content”, and follow the following instructions:
+## To reproduce all data files and results from scratch, set your working directory to your project directory “dispensable_ppi_content”, and follow the following instructions:
 
 mkdir data
 cd data
@@ -95,8 +95,8 @@ wget ftp://ftp.ncbi.nih.gov/blast/matrices/BLOSUM62
 cd ../../code
 python3 predict_perturbations_geometry.py
 
-# calculate junk PPI content using geometry-based mutation edgotype predictions:
-python3 calculate_junk_content_geometry.py
+# calculate dispensable PPI content using geometry-based mutation edgotype predictions:
+python3 calculate_dispensable_content_geometry.py
 
 # produce mutation structure maps for submission to BindProfX or FoldX:
 python3 produce_mutation_structure_maps.py
@@ -106,14 +106,14 @@ python3 produce_mutation_structure_maps.py
 # predict PPI perturbations by mutations based on physics (∆∆G calculations):
 python3 predict_perturbations_physics.py
 
-# calculate junk PPI content using physics-based mutation edgotype predictions:
-python3 calculate_junk_content_physics.py
+# calculate dispensable PPI content using physics-based mutation edgotype predictions:
+python3 calculate_dispensable_content_physics.py
 
-# calculate junk PPI content using experimental mutation edgotype data of Sahni et al (2015):
-python3 calculate_junk_content_experiment.py
+# calculate dispensable PPI content using experimental mutation edgotype data of Sahni et al (2015):
+python3 calculate_dispensable_content_experiment.py
 
-# plot junk PPI content calculated from predictions and experiments:
-python3 plot_junk_content.py
+# plot dispensable PPI content calculated from predictions and experiments:
+python3 plot_dispensable_content.py
 
 # calculate overlap in protein space covered by predictions and experiments:
 python3 calculate_protein_overlap.py

@@ -1,5 +1,5 @@
 
-To produce ∆∆G values using the FoldX method, follow the instructions below. Throughout the instructions, “junk_ppi_content” refers to your project directory, and <interactomeDir> refers to the interactome data directory “junk_ppi_content/data/processed/<interactome_name>” where <interactome_name> is the name of the reference interactome you are working on, either HI-II-14 or IntAct. Fold requires Python 2.
+To produce ∆∆G values using the FoldX method, follow the instructions below. Throughout the instructions, “dispensable_ppi_content” refers to your project directory, and <interactomeDir> refers to the interactome data directory “dispensable_ppi_content/data/processed/<interactome_name>” where <interactome_name> is the name of the reference interactome you are working on, either HI-II-14 or IntAct. Fold requires Python 2.
 
 1 - Register for a license with FoldX (http://foldxsuite.crg.eu/products#foldx)
 
@@ -11,7 +11,7 @@ To produce ∆∆G values using the FoldX method, follow the instructions below.
 
 5 - Copy the file rotabase.txt into folder jobs/
 
-6 - change working directory to junk_ppi_content/code.
+6 - change working directory to dispensable_ppi_content/code.
 
 7 - Run the script produce_foldx_jobs.py to produce data files for each job to be submitted to FoldX. These produced jobs will be saved in the data directory “<interactomeDir>/foldx/data”.
 
@@ -23,6 +23,6 @@ To produce ∆∆G values using the FoldX method, follow the instructions below.
 
 11 - Copy folder data/ into archive folder archived/, and rename folder data/ to results/.
 
-12 - Change working directory to junk_ppi_content/code
+12 - Change working directory to dispensable_ppi_content/code
 
 13 - Run the script process_foldx_results.py to process foldx results.

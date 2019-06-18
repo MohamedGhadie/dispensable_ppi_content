@@ -1,5 +1,5 @@
-
-To produce ∆∆G values using the BindProfX method, install BindProfX source files for Linux (https://zhanglab.ccmb.med.umich.edu/BindProfX/download/BindProfX.2018-08-08.tar.bz2). Set working directory to project directory “junk_ppi_content/code” and repeat steps 1-8 below until no new BindProfX jobs are produced by STEP 1. Throughout the instructions, <interactomeDir> refers to directory “junk_ppi_content/data/processed/<interactome_name>” where <interactome_name> is the name of the reference interactome you are working on, either HI-II-14 or IntAct. BindProfX requires Python 3.
+dispensable
+To produce ∆∆G values using the BindProfX method, install BindProfX source files for Linux (https://zhanglab.ccmb.med.umich.edu/BindProfX/download/BindProfX.2018-08-08.tar.bz2). Set working directory to project directory “dispensable_ppi_content/code” and repeat steps 1-8 below until no new BindProfX jobs are produced by STEP 1. Throughout the instructions, <interactomeDir> refers to directory “dispensable_ppi_content/data/processed/<interactome_name>” where <interactome_name> is the name of the reference interactome you are working on, either HI-II-14 or IntAct. BindProfX requires Python 3.
 
 1 - Run the script “produce_bindprofx_jobs.py” to produce data files for each job to be submitted to BindProfX. These produced jobs will be saved in the data directory “<interactomeDir>/bindprofx/data”.
 

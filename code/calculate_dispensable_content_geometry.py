@@ -1,7 +1,7 @@
 #----------------------------------------------------------------------------------------
-# Calculate the fraction of junk protein-protein interactions (PPIs) in the structural
+# Calculate the fraction of dispensable protein-protein interactions (PPIs) in the structural
 # interactome, i.e., the fraction of PPIs that are effectively neutral upon perturbation.
-# The fraction of junk PPIs is calculated from geometry-based predictions of PPI 
+# The fraction of dispensable PPIs is calculated from geometry-based predictions of PPI 
 # perturbations.
 #
 # Run the following script before running this script:
@@ -23,11 +23,11 @@ def main():
     # options: HI-II-14, IntAct
     interactome_name = 'HI-II-14'
     
-    # set to True to calculate junk PPI content using fraction of mono-edgetic mutations 
+    # set to True to calculate dispensable PPI content using fraction of mono-edgetic mutations 
     # instead of edgetic mutations
     mono_edgetic = False
     
-    # calculate confidence interval for the fraction of junk PPIs
+    # calculate confidence interval for the fraction of dispensable PPIs
     computeConfidenceIntervals = True
     
     # % confidence interval
@@ -54,7 +54,7 @@ def main():
     # output data files
     natMutEdgotypeFile = interactomeDir / 'nondisease_mutation_edgotype_geometry.txt'
     disMutEdgotypeFile = interactomeDir / 'disease_mutation_edgotype_geometry.txt'
-    junkPPIFile = interactomeDir / ('fraction_junk_PPIs_geometry%s.pkl' % ('_monoedgetic' if mono_edgetic else ''))
+    dispensablePPIFile = interactomeDir / ('fraction_disp_PPIs_geometry%s.pkl' % ('_monoedgetic' if mono_edgetic else ''))
     
     # create output directories if not existing
     if not interactomeDir.exists():
@@ -167,7 +167,7 @@ def main():
              figname = 'disease_%s_mutations_geometry' % label)
             
     #------------------------------------------------------------------------------------
-    # apply Bayes' theorem to calculate the fraction of PPIs that are junk, i.e., 
+    # apply Bayes' theorem to calculate the fraction of PPIs that are dispensable, i.e., 
     # effectively neutral under perturbation
     #------------------------------------------------------------------------------------
     
@@ -206,7 +206,7 @@ def main():
     print( 'P(E|M) = %.1f %%' % (100 * pE_M) )
     print( 'P(E|S) = %.1f %%' % (100 * pE_S) )
     print( 'P(E) = P(E|N)*P(N) + P(E|M)*P(M) + P(E|S)*P(S) = %.1f %%' % (100 * pE) )
-    print( 'Fraction of junk PPIs P(N|E) = P(E|N)*P(N)/P(E) = %.1f %%' % (100 * pN_E) )
+    print( 'Fraction of dispensable PPIs P(N|E) = P(E|N)*P(N)/P(E) = %.1f %%' % (100 * pN_E) )
     
     # calculate 95% confidence interval
     if computeConfidenceIntervals:
@@ -223,7 +223,7 @@ def main():
                 % (CI, 100 * pN_E_lower, 100 * pN_E_upper) )
         if not (np.isnan(pN_E_lower) or np.isnan(pN_E_upper)):
             allresults['P(N|E)_CI'] = [pN_E - pN_E_lower, pN_E_upper - pN_E]
-    with open(junkPPIFile, 'wb') as fOut:
+    with open(dispensablePPIFile, 'wb') as fOut:
         pickle.dump(allresults, fOut)
 
 if __name__ == "__main__":

@@ -3,8 +3,8 @@
 #
 # Run the following scripts before running this script:
 # - produce_data_mappings.py
-# - calculate_junk_content_geometry.py (for prediction edgotype data)
-# - calculate_junk_content_experiment.py (for experiment edgotype data)
+# - calculate_dispensable_content_geometry.py (for prediction edgotype data)
+# - calculate_dispensable_content_experiment.py (for experiment edgotype data)
 #----------------------------------------------------------------------------------------
 
 import os

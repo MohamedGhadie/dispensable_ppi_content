@@ -1,10 +1,10 @@
 #----------------------------------------------------------------------------------------
-# Plot the fraction of junk PPIs calculated from predictions and experiments.
+# Plot the fraction of dispensable PPIs calculated from predictions and experiments.
 #
 # Run the following scripts before running this script:
-# - calculate_junk_content_geometry.py
-# - calculate_junk_content_physics.py
-# - calculate_junk_content_experiment.py
+# - calculate_dispensable_content_geometry.py
+# - calculate_dispensable_content_physics.py
+# - calculate_dispensable_content_experiment.py
 #----------------------------------------------------------------------------------------
 
 import os
@@ -23,7 +23,7 @@ def main():
     # options: 'bindprofx' or 'foldx'
     ddg_method = 'bindprofx'
     
-    # set to True to plot junk PPI content using fraction of mono-edgetic mutations 
+    # set to True to plot dispensable PPI content using fraction of mono-edgetic mutations 
     # instead of edgetic mutations
     mono_edgetic = False
     
@@ -33,7 +33,7 @@ def main():
     # structural interactome names for plot labels
     struc_interactome_names = ['Y2H-SI', 'IntAct-SI', 'Experiment']
     
-    # plot confidence interval for the fraction of junk PPIs
+    # plot confidence interval for the fraction of dispensable PPIs
     plotConfidenceIntervals = True
     
     # show figures
@@ -54,18 +54,18 @@ def main():
         pred_method = pred_method + '_monoedgetic'
     
     # input data files
-    junkPPIFile_names = ('fraction_junk_PPIs_%s.pkl' % pred_method,
-                         'fraction_junk_PPIs_%s.pkl' % pred_method,
-                         'fraction_junk_PPIs_experiment.pkl')
+    dispensablePPIFile_names = ('fraction_disp_PPIs_%s.pkl' % pred_method,
+                                'fraction_disp_PPIs_%s.pkl' % pred_method,
+                                'fraction_disp_PPIs_experiment.pkl')
     
     # create output directories if not existing
     if not figDir.exists():
         os.makedirs(figDir)
     
     pN_E_results, pN_E_bounds = [], []
-    for interactome_name, junkPPIFile_name in zip(interactome_names, junkPPIFile_names):
-        junkPPIFile = procDir / interactome_name / junkPPIFile_name
-        with open(junkPPIFile, 'rb') as f:
+    for interactome_name, dispensablePPIFile_name in zip(interactome_names, dispensablePPIFile_names):
+        dispensablePPIFile = procDir / interactome_name / dispensablePPIFile_name
+        with open(dispensablePPIFile, 'rb') as f:
             all_results = pickle.load(f)
         pN_E_results.append( 100 * all_results['P(N|E)'] )
         if 'P(N|E)_CI' in all_results:
@@ -101,7 +101,7 @@ def main():
                 xbounds = (1, numInteractomes - 1) if mono_edgetic else (1, numInteractomes),
                 show = showFigs,
                 figdir = figDir,
-                figname = 'Fraction_junk_PPIs_%s' % pred_method)
+                figname = 'Fraction_disp_PPIs_%s' % pred_method)
 
 if __name__ == "__main__":
     main()

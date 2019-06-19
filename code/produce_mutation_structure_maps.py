@@ -5,7 +5,7 @@
 # Run the following scripts before running this script:
 # - produce_data_mappings.py
 # - produce_structural_interactome.py
-# - calculate_junk_content_geometry.py
+# - calculate_dispensable_content_geometry.py
 #----------------------------------------------------------------------------------------
 
 import os

@@ -496,30 +496,3 @@ def write_beluga_job (outPath,
             fout.write('\n')
             for cmd in commands:
                 fout.write('\n' + cmd)
-
-def sample_files (inDir, outDir, sampleSize):
-    """Select a sample of files from a directory.
-
-    Args:
-        inDir (Path): file directory containing files to sample from.
-        outDir (Path): file directory to save sampled files to.
-        sampleSize (int): number of files to sample.
-
-    """
-    jobDir = inDir / 'jobs'
-    dataDir = inDir / 'data'
-    jobOutDir = outDir / 'jobs'
-    dataOutDir = outDir / 'data'
-    if not jobOutDir.exists():
-        os.makedirs(jobOutDir)
-    if not dataOutDir.exists():
-        os.makedirs(dataOutDir)
-    
-    jobFiles = os.listdir(jobDir)
-    sampleJobs = sample (jobFiles, sampleSize)
-    for jobFile in sampleJobs:
-        cmd = ['cp', '-a', str(jobDir / jobFile), str(jobOutDir)]
-        subprocess.run(cmd)
-        dataFolder = jobFile.rsplit('_',1)[0]
-        cmd = ['cp', '-a', str(dataDir / dataFolder), str(dataOutDir)]
-        subprocess.run(cmd)

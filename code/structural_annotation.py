@@ -238,22 +238,42 @@ def sameStruct_mapping_chains (protein1,
             return sortedPairs   
     return chainPairs
 
-def filter_chain_annotations (inPath, evalue, chainCoverage, outPath):
-    """Filter protein chain annotations by alignment e-value and chain sequence coverage.
+def filter_chain_annotations (inPath,
+                              outPath,
+                              evalue = 1e-5,
+                              prCov = 0,
+                              chCov = 0):
+    
+    with io.open(inPath, "r", encoding="utf8", errors='ignore') as f, io.open(outPath, "w") as fout:
+        headers = f.readline().strip()
+        fout.write(headers + '\t' + 'Qcov' + '\t' + 'Scov' + '\n')
+        headerSplit = headers.split('\t')
+        numCol = len(headerSplit)
+        evaluePos = headerSplit.index('Expect')
+        QposPos = headerSplit.index('Qpos')
+        SposPos = headerSplit.index('Spos')
+        QlenPos = headerSplit.index('Qlen')
+        SlenPos = headerSplit.index('Slen')
+    with io.open(inPath, "r", encoding="utf8", errors='ignore') as f, io.open(outPath, "a") as fout:
+        next(f)
+        for line in f:
+            line = line.strip()
+            linesplit = line.split('\t')
+            if len(linesplit) == numCol:
+                if float(linesplit[evaluePos]) < evalue:
+                    Qpos = linesplit[QposPos].split(',')
+                    Spos = linesplit[SposPos].split(',')
+                    Qcov = len(Qpos) / int(linesplit[QlenPos])
+                    Scov = len(Spos) / int(linesplit[SlenPos])
+                    if (Qcov >= prCov) and (Scov >= chCov):
+                        fout.write('\t'.join([line, str(Qcov), str(Scov)]) + '\n')
+    remove_duplicate_chain_annotations(outPath, outPath)
 
-    Args:
-        inPath (Path): path to tab-deleimited file containing protein-chain alignments.
-        evalue (numeric): alignment e-value cutoff.
-        chainCoverage (numeric): alignment chain coverage cutoff (between 0 and 1).
-        outPath (Path): file path to save filtered alignments to.
-
-    """
+def remove_duplicate_chain_annotations (inPath, outPath):
+    
     chainMap = pd.read_table(inPath, sep='\t')
-    chainMap = chainMap[chainMap["Expect"] < evalue]
-    chainMap["chain_cov"] = chainMap["Spos"].apply(len) / chainMap["Slen"]
-    chainMap = chainMap[chainMap["chain_cov"] >= chainCoverage].reset_index(drop=True)
     chainMap = chainMap.sort_values("Expect", axis=0, ascending=True)
-    chainMap = chainMap.drop_duplicates(subset=['Query','Subject'], keep='first')
+    chainMap = chainMap.drop_duplicates(subset = ["Query", "Subject"], keep='first')
     chainMap = chainMap.sort_values(['Query','Subject'], axis=0, ascending=True)
     chainMap.to_csv(outPath, index=False, sep='\t')
 

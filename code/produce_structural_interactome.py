@@ -38,8 +38,11 @@ def main():
     # Maximum e-value cutoff to filter out protein-chain annotations
     evalue = 1e-10
     
+    # Minimum protein coverage fraction required for protein-chain annotation
+    proteinCov = 0
+    
     # Minimum chain coverage fraction required for protein-chain annotation
-    chainCoverage = 0
+    chainCov = 0
     
     # If True, chain residue is required to match aligned protein residue for their 
     # positions to be considered aligned
@@ -160,10 +163,11 @@ def main():
     
     if not chainMapFile3.is_file():
         print( 'filtering chain annotations' )
-        filter_chain_annotations(chainMapFile2,
-                                 evalue,
-                                 chainCoverage,
-                                 chainMapFile3)
+        filter_chain_annotations (chainMapFile2,
+                                  chainMapFile3,
+                                  evalue = evalue,
+                                  prCov = proteinCov,
+                                  chCov = chainCov)
     
     if not proteinChainsFile.is_file():
         print( 'producing protein chains dictionary' )

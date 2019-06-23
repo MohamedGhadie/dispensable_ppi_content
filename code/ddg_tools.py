@@ -341,7 +341,7 @@ def produce_foldx_and_guillimin_jobs (mutations,
         mutations (dict): mutations associated with each structural model.
         pdbDir (Path): file directory containing PDB structures.
         outDir (Path): file directory to save FoldX data files and Guillimin job files to.
-        foldxParam (dict): FoldX parameters used for each structure mutation tuple, otherwise default.
+        foldxParam (dict): FoldX parameters used for each mutation job, otherwise default.
         nodes (numeric): number of server nodes to be allocated.
         ppn (numeric): total number of CPU cores to be allocated.
         pmem (numeric): default random access memory (RAM) in MB to be reserved per core.
@@ -388,7 +388,7 @@ def produce_foldx_and_beluga_jobs (mutations,
         mutations (dict): mutations associated with each structural model.
         pdbDir (Path): file directory containing PDB structures.
         outDir (Path): file directory to save jobs to.
-        foldxParam (dict): FoldX parameters used for each structure mutation tuple, otherwise default.
+        foldxParam (dict): FoldX parameters used for each mutation job, otherwise default.
         account (str): project account name.
         walltime (str): maximum time allowed for job to run.
         ntasks (numeric): number of processes to be allocated.
@@ -428,7 +428,7 @@ def produce_foldx_jobs (mutations, pdbDir, outDir, parameters = None):
         mutations (dict): mutations associated with each structural model.
         pdbDir (Path): file directory containing PDB structures.
         outDir (Path): file directory to save FoldX jobs to.
-        parameters (dict): FoldX parameters used for each structure mutation tuple, otherwise default.
+        parameters (dict): FoldX parameters used for each mutation job, otherwise default.
 
     """
     clear_structures()

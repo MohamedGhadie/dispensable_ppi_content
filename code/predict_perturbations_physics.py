@@ -13,10 +13,10 @@
 # 1- run script produce_bindprofx_jobs.py on the two data files nondisease_mutations_onchains.txt 
 #    and disease_mutations_onchains.txt to produce bindprofx jobs for mutations grouped per structure
 # 2- submit jobs to bindprofx to calculate mutation ∆∆G
-# 3- run script produce_bindprofx_second_round_jobs.py to process bindprofx results 
+# 3- run script process_bindprofx_results.py to process bindprofx results 
 #    and produce second-round jobs for single mutations of failed jobs
 # 4- submit second-round jobs to bindprofx to calculate mutation ∆∆G
-# 5- run script produce_bindprofx_second_round_jobs.py to process bindprofx second-round results
+# 5- run script process_bindprofx_results.py to process bindprofx second-round results
 # 6- repeat steps 1-5 until no new jobs are produced
 # 7- Files containing final ∆∆G results should be named:
 #    'nondisease_mutations_bindprofx_ddg.txt' and 'disease_mutations_bindprofx_ddg.txt'

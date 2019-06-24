@@ -7,7 +7,7 @@ To produce ∆∆G values using the BindProfX method, install BindProfX source f
 
 3 - Copy folder “<interactomeDir>/bindprofx/data” into archive folder “<interactomeDir>/bindprofx/archived”, and rename “<interactomeDir>/bindprofx/data” to “<interactomeDir>/bindprofx/results”
 
-4 - Run the script “produce_bindprofx_second_round_jobs.py” to process BindProfx results and produce second-round jobs for single mutations that failed in first round. These produced single-mutation jobs will be saved in the data directory “<interactomeDir>/bindprofx/data”.
+4 - Run the script “process_bindprofx_results.py” to process BindProfx results and produce second-round jobs for single mutations that failed in first round. These produced single-mutation jobs will be saved in the data directory “<interactomeDir>/bindprofx/data”.
 
 5 - Move folder “<interactomeDir>/bindprofx/results” into archive folder “<interactomeDir>/bindprofx/archived”
 
@@ -15,7 +15,7 @@ To produce ∆∆G values using the BindProfX method, install BindProfX source f
 
 7 - Copy folder “<interactomeDir>/bindprofx/data” into archive folder “<interactomeDir>/bindprofx/archived”, and rename “<interactomeDir>/bindprofx/data” to “<interactomeDir>/bindprofx/results”
 
-8 - Run the script “produce_bindprofx_second_round_jobs.py” to process BindProfx second-round results. This step should not produce any new jobs.
+8 - Run the script “process_bindprofx_results.py” to process BindProfx second-round results. This step should not produce any new jobs.
 
 9 - Move folder “<interactomeDir>/bindprofx/results” into archive folder “<interactomeDir>/bindprofx/archived”.
 

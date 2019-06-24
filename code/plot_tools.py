@@ -24,8 +24,8 @@ def bar_plot (data,
               capsize = 10,
               fmt = '.k',
               msize = 12,
-              ewidth = 1.5,
-              edgecolor = 'none',
+              ewidth = 1,
+              edgecolor = 'black',
               ecolors = 'k',
               fontsize = 12,
               opacity = None,
@@ -141,8 +141,8 @@ def multi_bar_plot (data,
                     capsize = 10,
                     fmt = '.k',
                     msize = 12,
-                    ewidth = 1.5,
-                    edgecolor = 'none',
+                    ewidth = 1,
+                    edgecolor = 'black',
                     ecolors = 'k',
                     fontsize = 12,
                     opacity = None,
@@ -254,7 +254,7 @@ def multi_bar_plot (data,
                             capthick = ewidth,
                             ecolor = ecol)
     if leg:
-        ph.legend()
+        ph.legend(loc='best')
     if not xticks:
         if overlap:
             xticks = list(np.arange(1, numBars + 1))
@@ -420,7 +420,7 @@ def curve_plot (ydata,
             ph.plot(xpts, ypts, style)
     
     if leg:
-        ph.legend(leg)
+        ph.legend(leg, loc='best')
     adjust_axis (plt_fig,
                  ph,
                  xticklabels = xticklabels,
@@ -518,7 +518,7 @@ def scatter_plot (xdata,
         if barLabels:
             cbar.ax.set_yticklabels(barLabels)
     if leg:
-        ph.legend(leg)
+        ph.legend(leg, loc='best')
     adjust_axis (plt_fig,
                  ph,
                  xlabel = xlabel,
@@ -622,7 +622,7 @@ def multi_histogram_plot (samples,
                           xlabels = None,
                           ylabels = None,
                           leg = None,
-                          edgecolor = 'none',
+                          edgecolor = 'black',
                           fontsize = 12,
                           bins = 10,
                           alpha = 1,
@@ -664,7 +664,7 @@ def multi_histogram_plot (samples,
     else:
         ph.hist(samples, color=colors, bins=bins, alpha=alpha, label=leg, edgecolor=edgecolor)
     if leg:
-        ph.legend()
+        ph.legend(loc='best')
     adjust_axis (plt_fig,
                  ph,
                  xlabel = xlabel,

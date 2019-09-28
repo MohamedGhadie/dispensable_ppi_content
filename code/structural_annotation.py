@@ -243,7 +243,16 @@ def filter_chain_annotations (inPath,
                               evalue = 1e-5,
                               prCov = 0,
                               chCov = 0):
-    
+    """Filter protein chain annotations by coverage and e-value.
+
+    Args:
+        inPath (Path): path to tab-deleimited file containing protein-chain alignments.
+        outPath (Path): file path to save filtered alignments to.
+        evalue (numeric): maximum alignment e-value cutoff.
+        prCov (numeric): minimum alignment coverage fraction required on protein sequence.
+        chCov (numeric): minimum alignment coverage fraction required on chain sequence.
+
+    """
     with io.open(inPath, "r", encoding="utf8", errors='ignore') as f, io.open(outPath, "w") as fout:
         headers = f.readline().strip()
         fout.write(headers + '\t' + 'Qcov' + '\t' + 'Scov' + '\n')
@@ -270,7 +279,14 @@ def filter_chain_annotations (inPath,
     remove_duplicate_chain_annotations(outPath, outPath)
 
 def remove_duplicate_chain_annotations (inPath, outPath):
-    
+    """Keep only one alignment for each protein-chain pair, the one with the smallest 
+        e-value.
+
+    Args:
+        inPath (Path): path to tab-deleimited file containing protein-chain alignments.
+        outPath (Path): file path to save filtered alignments to.
+
+    """
     chainMap = pd.read_table(inPath, sep='\t')
     chainMap = chainMap.sort_values("Expect", axis=0, ascending=True)
     chainMap = chainMap.drop_duplicates(subset = ["Query", "Subject"], keep='first')

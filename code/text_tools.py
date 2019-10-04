@@ -404,7 +404,7 @@ def write_list_table (df, cols, outPath, delm = '\t'):
             table[col] = table[col].apply(lambda x: ','.join(map(str, x)))
     else:
         table[cols] = table[cols].apply(lambda x: ','.join(map(str, x)))
-    df.to_csv(outPath, index=False, sep=delm)
+    table.to_csv(outPath, index=False, sep=delm)
 
 def write_guillimin_job (outPath,
                          nodes = 1,

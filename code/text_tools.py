@@ -9,6 +9,7 @@ import pickle
 import subprocess
 import pandas as pd
 import numpy as np
+import copy as cp
 from pathlib import Path
 from Bio import Seq, SeqIO
 from random import sample
@@ -397,11 +398,12 @@ def write_list_table (df, cols, outPath, delm = '\t'):
         delm (str): delimiter used to write table to file.
 
     """
+    table = cp.deepcopy(df)
     if isinstance(cols, (list, tuple)):
         for col in cols:
-            df[col] = df[col].apply(lambda x: ','.join(map(str, x)))
+            table[col] = table[col].apply(lambda x: ','.join(map(str, x)))
     else:
-        df[cols] = df[cols].apply(lambda x: ','.join(map(str, x)))
+        table[cols] = table[cols].apply(lambda x: ','.join(map(str, x)))
     df.to_csv(outPath, index=False, sep=delm)
 
 def write_guillimin_job (outPath,

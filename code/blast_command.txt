@@ -1,0 +1,4 @@
+blastp -db pdb_seqres_db -query human_reference_sequences.fasta -out human_pdb_e-5_b -evalue 1e-5
+
+For skempi:
+blastp -db pdb_seqres_db -query skempi_sequences.fasta -out skempi_pdb_e1 -evalue 1

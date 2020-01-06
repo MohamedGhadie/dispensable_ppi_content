@@ -34,7 +34,7 @@ structures = {}
 # dictionary of PDB chain sequences
 chainSeq = {}
 
-# dictionary of of labels for chain sequence positions associated with 3D coordinates
+# dictionary of labels for chain sequence positions associated with 3D coordinates
 chainStrucResLabel = {}
 
 # mapping of chain sequence positions to residue IDs 

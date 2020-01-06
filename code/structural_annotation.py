@@ -860,7 +860,6 @@ def write_skempi_mutation_structure_maps (mutationFile,
                                    interactomeFile,
                                    chainMapFile,
                                    chainSeqFile,
-                                   chainSeqFile,
                                    chainStrucResFile,
                                    pdbDir,
                                    outPath,
@@ -872,7 +871,6 @@ def write_mutation_structure_maps (mutations,
                                    interactomeFile,
                                    chainMapFile,
                                    chainSeqFile,
-                                   proteinSeqFile,
                                    chainStrucResFile,
                                    pdbDir,
                                    outPath,
@@ -886,7 +884,6 @@ def write_mutation_structure_maps (mutations,
         interactomeFile (Path): path to file containing interface-annotated interactome.
         chainMapFile (Path): path to tab-delimited file containing protein-chain sequence alignments.
         chainSeqFile (Path): path to file containing dictionary of chain sequences.
-        proteinSeqFile (Path): path to file containing dictionary of protein sequences.
         chainStrucResFile (Path): path to file containing dict of labels for chain sequence 
                                     positions associated with 3D coordinates.
         pdbDir (Path): file directory containing PDB structures.

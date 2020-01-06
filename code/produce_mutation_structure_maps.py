@@ -42,7 +42,6 @@ def main():
     pdbDir = Path('../pdb_files')
     
     # input data files
-    ProteinSeqFile = procDir / 'human_reference_sequences.pkl'    
     chainSeqFile = procDir / 'chain_sequences.pkl'
     chainStrucResFile = procDir / 'chain_strucRes.pkl'
     chainInterfaceFile = procDir / 'pdb_interfaces.txt'
@@ -83,7 +82,6 @@ def main():
                                        interfaceAnnotatedInteractomeFile,
                                        chainMapFile,
                                        chainSeqFile,
-                                       ProteinSeqFile,
                                        chainStrucResFile,
                                        pdbDir,
                                        natural_mutations_onchains_file,
@@ -99,7 +97,6 @@ def main():
                                        interfaceAnnotatedInteractomeFile,
                                        chainMapFile,
                                        chainSeqFile,
-                                       ProteinSeqFile,
                                        chainStrucResFile,
                                        pdbDir,
                                        disease_mutations_onchains_file,

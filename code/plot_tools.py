@@ -913,8 +913,8 @@ def network_plot (edges,
     edges = g.edges()
     nodes = g.nodes()
     edgeColors = [g[u][v]['color'] for u,v in edges]
-    nodeSizes = [g.node[u]['size'] for u in nodes]
-    nodeColors = [g.node[u]['color'] for u in nodes]
+    nodeSizes = [g.nodes[u]['size'] for u in nodes]
+    nodeColors = [g.nodes[u]['color'] for u in nodes]
     pos = {'graphviz': graphviz_layout(g),
            'spring': nx.spring_layout(g),
            'shell': nx.shell_layout(g),

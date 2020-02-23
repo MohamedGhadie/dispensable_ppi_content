@@ -1,5 +1,5 @@
 
-To produce ∆∆G values using the FoldX method, follow the instructions below. Throughout the instructions, “dispensable_ppi_content” refers to your project directory, and <interactomeDir> refers to the interactome data directory “dispensable_ppi_content/data/processed/<interactome_name>” where <interactome_name> is the name of the reference interactome you are working on, either HI-II-14 or IntAct. Fold requires Python 2.
+To produce ∆∆G values using the FoldX method, follow the instructions below. Throughout the instructions, “dispensable_ppi_content” refers to your project directory, and <interactomeDir> refers to the interactome data directory “dispensable_ppi_content/data/processed/<interactome_name>” where <interactome_name> is the name of the reference interactome you are working on, either HI-II-14 or IntAct. FoldX requires Python 2.
 
 1 - Register for a license with FoldX (http://foldxsuite.crg.eu/products#foldx)
 

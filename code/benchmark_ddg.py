@@ -16,11 +16,11 @@ def main():
     
     # use ∆∆G results for crystal or homology model structures 
     # options: model, crystal
-    structure = 'model'
+    structure = 'crystal'
     
     # method of calculating mutation ∆∆G
     # options: bindprofx, foldx
-    ddg_method = 'foldx'
+    ddg_method = 'bindprofx'
     
     # parent directory of all data files
     dataDir = Path('../data')

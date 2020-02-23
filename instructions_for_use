@@ -42,7 +42,7 @@ rm intact.zip intact_negative.txt
 # downlaod experimental edgotype dataset of Sahni et al. (2015):
 wget https://ars.els-cdn.com/content/image/1-s2.0-S0092867415004304-mmc3.xlsx -O Sahni_2015_Table_S3.xlsx
 
-# process data files and produce structural interactome:
+# process data files and reference interactome:
 cd ../../code
 python3 produce_data_mappings.py
 python3 process_interactome.py

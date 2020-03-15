@@ -68,15 +68,17 @@ def write_interactome_sequences (inPath, sequenceFile, outPath):
         outPath(Path): path to write protein sequences to.
 
     """
-    interactome = pd.read_table(inPath, sep='\t')
-    sequences = pd.read_table(sequenceFile, sep='\t')
+    interactome = pd.read_table (inPath, sep='\t')
+    allsequences = pd.read_table (sequenceFile, sep='\t')
+    
     proteins = list(set(interactome[["Protein_1", "Protein_2"]].values.flatten()))
-    interactomeSequences = pd.DataFrame(index=range(len(proteins)),
-                                        columns=['ID', 'Sequence'])
-    interactomeSequences["ID"] = proteins
-    interactomeSequences["Sequence"] = interactomeSequences["ID"].apply(lambda x:
-                                                                        sequences.loc[sequences["ID"]==x,
-                                                                                      "Sequence"].item())
+    seqProteins, sequences = [], []
+    for p in proteins:
+        seq = allsequences.loc[allsequences["ID"]==p, "Sequence"]
+        if not seq.empty:
+            seqProteins.append(p)
+            sequences.append(seq.values[0])
+    interactomeSequences = pd.DataFrame(data = {"ID":seqProteins, "Sequence":sequences})
     write_fasta_file (interactomeSequences, "ID", "Sequence", outPath)
 
 def write_chain_annotated_interactome_to_excel (interactome,

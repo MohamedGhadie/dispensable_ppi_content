@@ -1,3 +1,6 @@
+
+makeblastdb -in pdb_seqres_reduced.fasta -dbtype prot -out pdb_seqres_db
+
 blastp -db pdb_seqres_db -query human_reference_sequences.fasta -out human_pdb_e-5 -evalue 1e-5
 
 For skempi:

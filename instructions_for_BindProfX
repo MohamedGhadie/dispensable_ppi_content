@@ -1,22 +1,54 @@
 
-To produce ∆∆G values using the BindProfX method, install BindProfX source files for Linux (https://zhanglab.ccmb.med.umich.edu/BindProfX/download/BindProfX.2018-08-08.tar.bz2). Set working directory to project directory “dispensable_ppi_content/code” and repeat steps 1-8 below until no new BindProfX jobs are produced by STEP 1. Throughout the instructions, <interactomeDir> refers to directory “dispensable_ppi_content/data/processed/<interactome_name>” where <interactome_name> is the name of the reference interactome you are working on, either HI-II-14 or IntAct. BindProfX requires Python 3.
+# This file provides instructions to create BindProfX jobs for calculating PPI binding ∆∆G upon mutation, and processing of BindProfX results. BindProfX requires Python 3.
 
-1 - Run the script “produce_bindprofx_jobs.py” to produce data files for each job to be submitted to BindProfX. These produced jobs will be saved in the data directory “<interactomeDir>/bindprofx/data”.
+1 - Install BindProfX source files for Linux (https://zhanglab.ccmb.med.umich.edu/BindProfX/download/BindProfX.2018-08-08.tar.bz2) into separate BindProfX directory
 
-2 - From the BindProfX directory, run the command “./bin/get_final_score.py <path_to_data_folder>” for each data folder in directory “<interactomeDir>/bindprofx/data”. BindProfX will save results in the same data folder.
+2 - Set working directory to project directory dispensable_ppi_content/
 
-3 - Copy folder “<interactomeDir>/bindprofx/data” into archive folder “<interactomeDir>/bindprofx/archived”, and rename “<interactomeDir>/bindprofx/data” to “<interactomeDir>/bindprofx/results”
+3 - Produce BindProfX jobs:
+cd code/
+python3 produce_bindprofx_jobs.py
 
-4 - Run the script “process_bindprofx_results.py” to process BindProfx results and produce second-round jobs for single mutations that failed in first round. These produced single-mutation jobs will be saved in the data directory “<interactomeDir>/bindprofx/data”.
+# BindProfX data files will be saved to directory: dispensable_ppi_content/data/processed/HI-II-14/bindprofx/data
 
-5 - Move folder “<interactomeDir>/bindprofx/results” into archive folder “<interactomeDir>/bindprofx/archived”
+# Job scripts to be run on the computing cluster (in this case the Compute Canada Guillimin 
+server) will be saved to directory: dispensable_ppi_content/data/processed/HI-II-14/bindprofx/jobs
 
-6 - From the BindProfX directory, run the command “./bin/get_final_score.py <path_to_data_folder>” on each data folder in directory “<interactomeDir>/bindprofx/data”. BindProfX will save results in the same data folder.
+# To run jobs in parallel on computing cluster (Guillimin), follow instructions 4 to 7 below:
 
-7 - Copy folder “<interactomeDir>/bindprofx/data” into archive folder “<interactomeDir>/bindprofx/archived”, and rename “<interactomeDir>/bindprofx/data” to “<interactomeDir>/bindprofx/results”
+	4 - Upload the two bindprofx folders data/ and jobs/ to BindProfX installation directory on the computing cluster
+	
+	5 - Go to BindProfX installation directory on the computing cluster
+	
+	6 - cd jobs/
+	
+	7 - Submit each job script to the server
 
-8 - Run the script “process_bindprofx_results.py” to process BindProfx second-round results. This step should not produce any new jobs.
+# Alternatively, to run jobs sequentially on local computer, follow instructions 8 to 10 below:
 
-9 - Move folder “<interactomeDir>/bindprofx/results” into archive folder “<interactomeDir>/bindprofx/archived”.
+	8 - Copy the two bindprofx folders data/ and jobs/ to local BindProfX installation directory
+	
+	9 - Change directory to local BindProfX installation directory
+	
+	10 - For each data folder in data/, run the following command:
+	./bin/get_final_score.py ./data/<data_folder_name>
 
-10 - Return to Step 1.
+# BindProfX will save results for each job into its data folder.
+
+11 - When all calculations are completed, rename the BindProfX data/ folder that has results in it to results/
+
+12 - Copy the BindProfX results/ folder to dispensable_ppi_content/data/processed/HI-II-14/bindprofx/
+
+13 - Move data/ and jobs/ folders in directory dispensable_ppi_content/data/processed/HI-II-14/bindprofx/ to an archive/ folder
+
+14 - Process BindProfX results and produce second round single-mutation jobs:
+cd dispensable_ppi_content/code/
+python3 process_bindprofx_results.py
+
+# New folders data/ and jobs/ will be created in directory: dispensable_ppi_content/data/processed/HI-II-14/bindprofx/. Any multi-mutation jobs that failed in the first round of BindProfX calculations are split into single-mutation jobs.
+
+15 - Move the bindprofx results/ folder to the archive/ folder
+
+16 - Repeat steps 4 to 15 on the new single-mutation jobs.
+
+17 - When step 16 is done, start again from step 3 until no new jobs are produced by step 3.

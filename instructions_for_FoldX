@@ -1,28 +1,61 @@
 
-To produce ∆∆G values using the FoldX method, follow the instructions below. Throughout the instructions, “dispensable_ppi_content” refers to your project directory, and <interactomeDir> refers to the interactome data directory “dispensable_ppi_content/data/processed/<interactome_name>” where <interactome_name> is the name of the reference interactome you are working on, either HI-II-14 or IntAct. FoldX requires Python 2.
+# This file provides instructions to create FoldX jobs for calculating PPI binding ∆∆G upon mutation, and processing of FoldX results. FoldX requires Python 2.
 
 1 - Register for a license with FoldX (http://foldxsuite.crg.eu/products#foldx)
 
-2 - Change working directory to <interactomeDir> and create a folder called ‘foldx’
+2 - Download FoldX and extract files into separate FoldX directory. You should get two files: foldx executable and rotabase.txt
 
-3 - Change working directory to <interactomeDir>/foldx and create a folder called ‘jobs’ and a folder called ‘archived’
+3 - Set working directory to project directory dispensable_ppi_content/
 
-4 - Download FoldX for Linux and extract files in directory <interactomeDir>/foldx
+4 - Produce FoldX jobs:
+cd code/
+python3 produce_foldx_jobs.py
 
-5 - Copy the file rotabase.txt into folder jobs/
+# FoldX data files will be saved to directory: dispensable_ppi_content/data/processed/HI-II-14/foldx/data
 
-6 - change working directory to dispensable_ppi_content/code.
+# Job scripts to be run on the computing cluster (in this case the Compute Canada Beluga 
+server) will be saved to directory: dispensable_ppi_content/data/processed/HI-II-14/foldx/jobs
 
-7 - Run the script produce_foldx_jobs.py to produce data files for each job to be submitted to FoldX. These produced jobs will be saved in the data directory “<interactomeDir>/foldx/data”.
+# To run jobs in parallel on computing cluster (Beluga), follow instructions 5 to 9 below:
 
-8 - Change working directory to <interactomeDir>/foldx/jobs
+	5 - Upload the two foldx folders data/ and jobs/ to FoldX installation directory on the computing cluster
+	
+	6 - Go to FoldX installation directory on the computing cluster
+	
+	7 - cp rotabase.txt jobs/
+	
+	8 - cd jobs/
+	
+	9 - Submit each job script to the server
 
-9 - For each data folder in <interactomeDir>/foldx/data, run the two commands “foldx -f <path_to_data_folder>/config_repairPDB.cfg” and “foldx -f <path_to_data_folder>/config_pssm.cfg“, where <path_to_data_folder> is the full path to the data folder. FoldX will save results in the same data folder.
+# Alternatively, to run jobs sequentially on local computer, follow instructions 10 to 14 below:
 
-10 - Change working directory to <interactomeDir>/foldx
+	10 - Copy the two foldx folders data/ and jobs/ to local FoldX installation directory
+	
+	11 - Change directory to local FoldX installation directory
+	
+	12 - cp rotabase.txt jobs/
+	
+	13 - cd jobs/
+	
+	14 - For each data folder in data/, run the following two commands from the jobs directory:
+	../foldx -f ../data/<data_folder_name>/config_repairPDB.cfg
+	../foldx -f ../data/<data_folder_name>/config_pssm.cfg
 
-11 - Copy folder data/ into archive folder archived/, and rename folder data/ to results/.
+# FoldX will save results for each job into its data folder.
 
-12 - Change working directory to dispensable_ppi_content/code
+15 - When all calculations are completed, rename the FoldX data/ folder that has results in it to results/
 
-13 - Run the script process_foldx_results.py to process foldx results.
+16 - Copy the FoldX results/ folder to dispensable_ppi_content/data/processed/HI-II-14/foldx/
+
+17 - Move data/ and jobs/ folders in directory dispensable_ppi_content/data/processed/HI-II-14/foldx/ to an archive/ folder
+
+18 - Process FoldX results:
+cd dispensable_ppi_content/code/
+python3 process_foldx_results.py
+
+# New folders data/ and jobs/ will be created in directory: dispensable_ppi_content/data/processed/HI-II-14/foldx/. These new folders should be empty indicating that all results have been processed. If any new jobs appear in these folders, it means they were mistakenly missed in the first run of FoldX calculations.
+
+19 - Move the foldx results/ folder to the archive/ folder
+
+20 - Repeat steps 5 to 19 on the remaining jobs.

@@ -74,7 +74,7 @@ def pdbfile_id (strucid):
     m = re.search(r'-|_', strucid)
     if m:
         ind = m.start(0)
-        return strucid[:ind] + re.sub(r'([a-z])', r'!\1', strucid[ind:])
+        return strucid[:ind] + re.sub(r'((?<!!)[a-z])', r'!\1', strucid[ind:])
     else:
         return strucid
 

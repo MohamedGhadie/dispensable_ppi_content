@@ -594,10 +594,10 @@ def toOneLetterAA (aa):
         str if valid, otherwise '-'
 
     """
-    oneLetter = {'Cis': 'C', 'Asp': 'D', 'Ser': 'S', 'Gln': 'Q', 'Lys': 'K', 'Trp': 'W', 
+    oneLetter = {'Cys': 'C', 'Asp': 'D', 'Ser': 'S', 'Gln': 'Q', 'Lys': 'K', 'Trp': 'W', 
                  'Thr': 'T', 'Asn': 'N', 'Pro': 'P', 'Phe': 'F', 'Ala': 'A', 'Gly': 'G', 
                  'Ile': 'I', 'Leu': 'L', 'His': 'H', 'Arg': 'R', 'Met': 'M', 'Val': 'V', 
-                 'Glu': 'E', 'Tyr': 'Y', 'Ter': '*'}
+                 'Glu': 'E', 'Tyr': 'Y', 'Asx': 'B', 'Glx': 'Z', 'Ter': '*'}
     
     aa = aa.title()
     if aa in oneLetter:
